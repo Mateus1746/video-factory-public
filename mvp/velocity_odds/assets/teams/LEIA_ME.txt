@@ -1,0 +1,9 @@
+COMO ADICIONAR IMAGENS DOS TIMES:
+
+1. Coloque suas imagens (png ou jpg) nesta pasta.
+2. Os nomes padrão esperados pelo código são:
+   - team_a.png (para o Time Esquerdo/Vermelho)
+   - team_b.png (para o Time Direito/Amarelo)
+
+3. O jogo redimensionará automaticamente as imagens para caber nas bolinhas.
+4. Se quiser mudar os nomes dos arquivos, edite o arquivo 'config.py' na raiz do projeto.

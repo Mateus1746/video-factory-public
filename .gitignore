@@ -1,0 +1,43 @@
+# Secrets and Credentials
+antigravity-youtube-*.json
+client_secret*.json
+*service_account*.json
+token_drive.json
+token.json
+credentials.json
+secrets.json
+*.pem
+*.key
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log
+
+# Project specific
+downloaded_videos/
+*/output/
+output/
+tmp/
+temp/
+*.log
+bridge.log
+automator.log
+trigger_all.txt
+
+# Editor
+.vscode/
+.idea/
+.DS_Store

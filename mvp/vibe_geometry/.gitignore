@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.vscode/
+downloads/
+videos/
+*.mp4
+*.json
+*.mp3
+# Keep data folder but ignore large files inside if needed, for now ignore except keepgit?
+# Actually the user might want data kept.
+# Let's ignore generated assets
+render_output.mp4

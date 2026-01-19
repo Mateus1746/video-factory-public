@@ -1,0 +1,6 @@
+pygame==2.6.1
+numpy
+yt-dlp
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib

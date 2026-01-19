@@ -1,0 +1,19 @@
+version = 1
+revision = 3
+requires-python = ">=3.13"
+
+[[package]]
+name = "merge-tower-defense"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "nexus-engine" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "nexus-engine", editable = "../../nexus_core" }]
+
+[[package]]
+name = "nexus-engine"
+version = "0.1.0"
+source = { editable = "../../nexus_core" }

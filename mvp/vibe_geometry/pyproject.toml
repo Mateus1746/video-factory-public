@@ -1,0 +1,27 @@
+[project]
+name = "music"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ffmpeg-python>=0.2.0",
+    "librosa>=0.10.2",
+    "moviepy>=1.0.3",
+    "numpy>=2.0.0",
+    "opencv-python>=4.11.0.86",
+    "pygame>=2.6.1",
+    "soundfile>=0.13.1",
+    "yt-dlp>=2024.12.0",
+    "numba>=0.60.0",
+    "matplotlib>=3.10.8",
+    "scipy>=1.16.3",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+yt-dlp = { git = "https://github.com/yt-dlp/yt-dlp.git", rev = "master" }

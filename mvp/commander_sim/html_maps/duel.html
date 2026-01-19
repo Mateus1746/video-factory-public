@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duelo Vertical</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        #game-container {
+            background: #1a0a0a;
+        }
+
+        .ui-header {
+            position: absolute;
+            top: 60px;
+            width: 100%;
+            text-align: center;
+            color: #ff3333;
+            text-shadow: 0 0 20px rgba(255, 51, 51, 0.8);
+            font-weight: 900;
+            font-size: 56px;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 15px;
+        }
+    </style>
+    <script>
+        window.MAP_DATA = {
+            buildings: [
+                { x: 540, y: 1700, team: "PLAYER", count: 50 },
+                { x: 540, y: 220, team: "ENEMY", count: 50 },
+                { x: 300, y: 960, team: "NEUTRAL", count: 5 },
+                { x: 780, y: 960, team: "NEUTRAL", count: 5 },
+                { x: 540, y: 600, team: "NEUTRAL", count: 5 },
+                { x: 540, y: 1320, team: "NEUTRAL", count: 5 }
+            ]
+        };
+    </script>
+</head>
+
+<body>
+    <div id="game-container">
+        <div class="ui-header">DUELO FATAL</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    <script type="module" src="../js/main.js"></script>
+</body>
+
+</html>

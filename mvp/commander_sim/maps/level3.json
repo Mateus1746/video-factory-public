@@ -1,0 +1,16 @@
+{
+    "name": "Frozen Outposts",
+    "biome": "ICE",
+    "buildings": [
+        { "x": 100, "y": 960, "team": "PLAYER", "count": 40, "type": "NORMAL" },
+        { "x": 980, "y": 960, "team": "ENEMY", "count": 40, "type": "NORMAL" },
+        
+        { "x": 540, "y": 500, "team": "NEUTRAL", "count": 30, "type": "BUNKER" },
+        { "x": 540, "y": 1420, "team": "NEUTRAL", "count": 30, "type": "BUNKER" },
+        
+        { "x": 300, "y": 300, "team": "NEUTRAL", "count": 10, "type": "NORMAL" },
+        { "x": 780, "y": 300, "team": "NEUTRAL", "count": 10, "type": "NORMAL" },
+        { "x": 300, "y": 1620, "team": "NEUTRAL", "count": 10, "type": "NORMAL" },
+        { "x": 780, "y": 1620, "team": "NEUTRAL", "count": 10, "type": "NORMAL" }
+    ]
+}

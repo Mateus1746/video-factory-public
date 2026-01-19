@@ -1,0 +1,45 @@
+:root {
+    --bg-color: #0d1117;
+    --player-color: #00ffff;
+    --enemy-color: #ff00ff;
+    --neutral-color: #4a4d52;
+    --white: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+}
+
+#game-container {
+    position: relative;
+    width: 1080px;
+    height: 1920px;
+    background-color: #161b22;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+    /* No preview, escalamos para caber na tela */
+    transform: scale(calc(min(100vw / 1080, 100vh / 1920) * 0.9));
+    transform-origin: center;
+    flex-shrink: 0;
+}
+
+body.rendering #game-container {
+    transform: scale(1);
+    box-shadow: none;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+}

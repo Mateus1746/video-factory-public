@@ -1,0 +1,59 @@
+{
+    "name": "Layout Cluster Inicial (Balanceado)",
+    "buildings": [
+        {
+            "x": 540,
+            "y": 1620,
+            "team": "PLAYER",
+            "count": 50
+        },
+        {
+            "x": 540,
+            "y": 300,
+            "team": "ENEMY",
+            "count": 50
+        },
+        {
+            "x": 300,
+            "y": 800,
+            "team": "NEUTRAL",
+            "count": 10
+        },
+        {
+            "x": 780,
+            "y": 800,
+            "team": "NEUTRAL",
+            "count": 10
+        },
+        {
+            "x": 540,
+            "y": 960,
+            "team": "NEUTRAL",
+            "count": 15
+        },
+        {
+            "x": 250,
+            "y": 600,
+            "team": "NEUTRAL",
+            "count": 5
+        },
+        {
+            "x": 830,
+            "y": 600,
+            "team": "NEUTRAL",
+            "count": 5
+        },
+        {
+            "x": 320,
+            "y": 1210,
+            "team": "NEUTRAL",
+            "count": 5
+        },
+        {
+            "x": 760,
+            "y": 1210,
+            "team": "NEUTRAL",
+            "count": 5
+        }
+    ]
+}

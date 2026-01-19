@@ -1,0 +1,21 @@
+[project]
+name = "satisfying-tower-defense"
+version = "0.1.0"
+description = "Viral video generator for tower defense simulations"
+requires-python = ">=3.11"
+dependencies = [
+    "pygame>=2.5.0",
+    "numpy>=1.26.0",
+    "opencv-python>=4.9.0",
+    "moviepy>=2.2.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sim*", "vis*", "pipeline*"]
+exclude = ["assets*", "output*"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

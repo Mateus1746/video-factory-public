@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cyber-Siege: System Breach</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        #game-container {
+            box-shadow: 0 0 100px rgba(0, 255, 255, 0.2);
+            border: 2px solid #00f2ff;
+            background: #0a0a12;
+        }
+
+        body.rendering #game-container {
+            border: none;
+        }
+
+        .ui-header {
+            position: absolute;
+            top: 70px;
+            width: 100%;
+            text-align: center;
+            color: #00f2ff;
+            text-shadow: 0 0 20px #00f2ff;
+            font-weight: 900;
+            font-size: 48px;
+            letter-spacing: 12px;
+            text-transform: uppercase;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .terminal-log {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            color: #ff00ff;
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            text-shadow: 0 0 10px #ff00ff;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            z-index: 10;
+            border-left: 4px solid #ff00ff;
+        }
+
+        .alert-box {
+            position: absolute;
+            top: 160px;
+            right: 50px;
+            color: #fff;
+            background: #ff0055;
+            padding: 10px 30px;
+            font-size: 24px;
+            font-weight: bold;
+            animation: blink 1s infinite;
+            z-index: 10;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
+    <script>
+        window.MAP_DATA = {
+            buildings: [
+                { x: 540, y: 1680, team: 'PLAYER', count: 100, label: "LOCAL HOST" },
+                { x: 240, y: 1320, team: 'PLAYER', count: 50, label: "PROXY 01" },
+                { x: 840, y: 1320, team: 'NEUTRAL', count: 10, label: "DATA CACHE" },
+                { x: 540, y: 960, team: 'NEUTRAL', count: 20, label: "ENCRYPTED HUB" },
+                { x: 288, y: 600, team: 'ENEMY', count: 50, label: "MALWARE.EXE" },
+                { x: 792, y: 600, team: 'ENEMY', count: 50, label: "ROOT_KIT" },
+                { x: 540, y: 240, team: 'ENEMY', count: 50, label: "CORE MAINFRAME" }
+            ]
+        };
+
+        let frameCode = 0;
+        window.renderMapBackground = function (ctx, canvas) {
+            ctx.fillStyle = '#0a0a12';
+            ctx.fillRect(0, 0, 1080, 1920);
+
+            // Grid
+            ctx.strokeStyle = 'rgba(0, 242, 255, 0.05)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 1080; i += 72) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1920); ctx.stroke();
+            }
+            for (let j = 0; j < 1920; j += 72) {
+                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(1080, j); ctx.stroke();
+            }
+
+            // Data Links
+            const links = [[0, 1], [0, 2], [1, 3], [2, 3], [3, 4], [3, 5], [4, 6], [5, 6]];
+            links.forEach(l => {
+                const s = window.MAP_DATA.buildings[l[0]];
+                const e = window.MAP_DATA.buildings[l[1]];
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#00f2ff';
+                ctx.strokeStyle = 'rgba(0, 242, 255, 0.2)';
+                ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y); ctx.stroke();
+
+                // Animated pulse
+                ctx.setLineDash([15, 45]);
+                ctx.lineDashOffset = -frameCode * 4;
+                ctx.strokeStyle = 'rgba(0, 242, 255, 0.8)';
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.shadowBlur = 0;
+            });
+
+            // Scanlines
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+            for (let i = 0; i < 1920; i += 8) {
+                ctx.fillRect(0, i + (frameCode % 8), 1080, 2);
+            }
+
+            frameCode++;
+        };
+    </script>
+</head>
+
+<body>
+    <div id="game-container">
+        <div class="ui-header">Cyber-Siege: System Breach</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    <script type="module" src="../js/main.js"></script>
+</body>
+
+</html>

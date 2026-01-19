@@ -1,0 +1,9 @@
+# New Wormhole logic breakdown:
+# 1. Analyze 3-4 bands (Bass, Low-Mid, High-Mid, High).
+# 2. Detect Onsets.
+# 3. Class 'SpiralLine':
+#    - Birth frame
+#    - Assigned target center (usually 0,0 but changes in outro)
+#    - Color palette
+#    - Frequency index it listens to
+# 4. Outro: line.is_dying = True -> start reducing length from start.

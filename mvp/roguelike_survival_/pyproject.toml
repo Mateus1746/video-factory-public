@@ -1,0 +1,25 @@
+[project]
+name = "roguelike-survival-pygame"
+version = "0.1.0"
+description = "Autonomous Roguelike Simulation for Content Creation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pygame>=2.6.1",
+    "numpy>=1.26.0",
+    "moviepy>=1.0.3",
+    "gymnasium>=1.2.3",
+    "stable-baselines3>=2.7.1",
+    "torch>=2.9.1",
+    "shimmy>=2.0.0",
+    "tqdm>=4.67.1",
+    "rich>=14.2.0",
+]
+
+[tool.uv]
+package = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

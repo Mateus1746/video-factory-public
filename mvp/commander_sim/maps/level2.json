@@ -1,0 +1,15 @@
+{
+    "name": "Magma Core Conflict",
+    "biome": "LAVA",
+    "buildings": [
+        { "x": 540, "y": 1700, "team": "PLAYER", "count": 60, "type": "NORMAL" },
+        { "x": 540, "y": 200, "team": "ENEMY", "count": 60, "type": "NORMAL" },
+        
+        { "x": 540, "y": 960, "team": "NEUTRAL", "count": 100, "type": "FACTORY" },
+        
+        { "x": 200, "y": 600, "team": "NEUTRAL", "count": 20, "type": "NORMAL" },
+        { "x": 880, "y": 600, "team": "NEUTRAL", "count": 20, "type": "NORMAL" },
+        { "x": 200, "y": 1320, "team": "NEUTRAL", "count": 20, "type": "NORMAL" },
+        { "x": 880, "y": 1320, "team": "NEUTRAL", "count": 20, "type": "NORMAL" }
+    ]
+}

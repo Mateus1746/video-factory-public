@@ -1,0 +1,17 @@
+[project]
+name = "merge-tower-defense"
+version = "0.1.0"
+description = "Merge Tower Defense visualization and rendering"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["assets*", "frames*", "html_maps*", "js*", "maps*", "node_modules*"]
+
+[tool.uv]
+managed = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
