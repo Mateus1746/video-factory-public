@@ -53,7 +53,7 @@ jobs:
       run: |
         echo "🎬 Generating Commander Sim..."
         cd mvp/commander_sim
-        python batch_pipeline.py
+        python batch_pipeline.py 1 # LIMIT TO 1 VIDEO
     
     - name: Tag Commander Sim
       if: steps.gen_commander.outcome == 'success'
@@ -66,8 +66,7 @@ jobs:
       run: |
         echo "🎬 Generating Vibe Geometry..."
         cd mvp/vibe_geometry
-        # batch_pipeline uses 'uv run', so uv must be installed (done above)
-        python batch_pipeline.py 1 # Generate 1 video
+        python batch_pipeline.py 1
 
     - name: Tag Vibe Geometry
       if: steps.gen_vibe.outcome == 'success'
@@ -80,8 +79,8 @@ jobs:
       run: |
         echo "🎬 Generating Fortress Merge..."
         cd mvp/fortress_merge
-        python batch_pipeline.py
-    
+        python batch_pipeline.py 1
+
     - name: Tag Fortress Merge
       if: steps.gen_fortress.outcome == 'success'
       run: python scripts/tag_video.py --dir mvp/fortress_merge --project "Fortress_Merge"
@@ -93,7 +92,7 @@ jobs:
       run: |
         echo "🎬 Generating Marble War..."
         cd "mvp/marble war"
-        python batch_pipeline.py
+        python batch_pipeline.py 1
 
     - name: Tag Marble War
       if: steps.gen_marble.outcome == 'success'
@@ -106,7 +105,7 @@ jobs:
       run: |
         echo "🎬 Generating Roguelike Survival..."
         cd mvp/roguelike_survival_
-        python batch_pipeline.py
+        python batch_pipeline.py 1
 
     - name: Tag Roguelike Survival
       if: steps.gen_rogue.outcome == 'success'
@@ -119,7 +118,7 @@ jobs:
       run: |
         echo "🎬 Generating Arena of Algorithms..."
         cd mvp/the_arena_of_algoritms
-        python batch_pipeline.py
+        python batch_pipeline.py 1
     
     - name: Tag Arena of Algorithms
       if: steps.gen_arena.outcome == 'success'
@@ -132,7 +131,7 @@ jobs:
       run: |
         echo "🎬 Generating Tower Defense..."
         cd mvp/tower_defense
-        python batch_pipeline.py
+        python batch_pipeline.py 1
     
     - name: Tag Tower Defense
       if: steps.gen_tower.outcome == 'success'
@@ -145,7 +144,7 @@ jobs:
       run: |
         echo "🎬 Generating Velocity Odds..."
         cd mvp/velocity_odds
-        python batch_pipeline.py
+        python batch_pipeline.py 1
     
     - name: Tag Velocity Odds
       if: steps.gen_velocity.outcome == 'success'
@@ -155,18 +154,15 @@ jobs:
     - name: Find and Upload All Videos
       env:
         GDRIVE_CREDENTIALS_JSON: ${{ secrets.GDRIVE_CREDENTIALS_JSON }}
-        # Optional: Drive Folder ID can be hardcoded here or passed to script
         DRIVE_FOLDER_ID: "101AIv9yfWOGfLl29gb74-n49xzcL2iCn"
       run: |
         echo "🔍 Searching for ALL generated MP4 files..."
         
-        # Find all mp4 files generated in the last 360 minutes that start with "["
-        # This ensures we only upload the successfully tagged ones
+        # Find all tagged videos generated in the last 60 mins
         find . -name "[*]*.mp4" -type f -mmin -360 > new_videos.txt
         
         if [ ! -s new_videos.txt ]; then
-            echo "⚠️ No new TAGGED videos found."
-            # Fallback: Find any mp4 just in case tag failed but generation worked
+            echo "⚠️ No new TAGGED videos found. Trying untagged..."
             find . -name "*.mp4" -type f -mmin -360 > new_videos.txt
         fi
         
@@ -180,6 +176,5 @@ jobs:
 
         while IFS= read -r video; do
             echo "📤 Uploading $video..."
-            # Pass folder ID as 2nd arg
             python scripts/upload_to_drive.py "$video" "$DRIVE_FOLDER_ID"
         done < new_videos.txt
