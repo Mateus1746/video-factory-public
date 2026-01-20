@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
@@ -20,12 +20,10 @@ async function renderSimulation(file, type, port) {
     console.log(`🎥 [FINAL] Iniciando Renderização de Alta Qualidade (1080p 60fps): ${file}`);
     console.log(`ℹ️  Isso pode demorar, pois estamos capturando cada frame individualmente.`);
     
-    // Tenta encontrar o Chrome do sistema ou falha
-    const executablePath = process.env.CHROME_BIN || '/usr/bin/google-chrome';
-    console.log(`Using Chrome at: ${executablePath}`);
+    // Use Puppeteer's bundled Chromium by default
+    console.log(`Using bundled Chromium...`);
 
     const browser = await puppeteer.launch({
-        executablePath: executablePath,
         headless: "new",
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
