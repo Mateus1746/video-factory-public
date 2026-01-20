@@ -1,0 +1,78 @@
+name: Video Factory Pipeline
+
+on:
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+  push:
+    branches:
+      - main
+    paths:
+      - 'mvp/**'
+      - 'scripts/**'
+
+jobs:
+  build-and-generate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install System Dependencies (FFmpeg)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+
+    - name: Install Python Libraries
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        # Install project specific deps if any
+        pip install moviepy pillow scipy
+
+    - name: Generate Video (Vibe Geometry)
+      id: gen_vibe
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Vibe Geometry..."
+        cd mvp/vibe_geometry
+        # Assuming batch_pipeline.py generates a video in a known location or 'output/'
+        # Adjust command based on actual file. Using generate_video.py as fallback if batch doesnt exist
+        python generate_video.py
+      
+    - name: Generate Video (Commander Sim)
+      id: gen_commander
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Commander Sim..."
+        cd mvp/commander_sim
+        python batch_pipeline.py
+
+    - name: Find and Upload Videos
+      env:
+        GDRIVE_CREDENTIALS_JSON: ${{ secrets.GDRIVE_CREDENTIALS_JSON }}
+        # Optional: Set a specific folder ID here if you want
+        # DRIVE_FOLDER_ID: "101AIv9yfWOGfLl29gb74-n49xzcL2iCn" 
+      run: |
+        echo "🔍 Searching for generated MP4 files..."
+        
+        # Find all mp4 files generated in the last 10 minutes to avoid re-uploading old stuff (if cached)
+        # Using find command
+        find . -name "*.mp4" -type f -mmin -10 > new_videos.txt
+        
+        if [ ! -s new_videos.txt ]; then
+            echo "⚠️ No new videos found."
+            exit 0
+        fi
+
+        echo "🚀 Found videos to upload:"
+        cat new_videos.txt
+
+        while IFS= read -r video; do
+            echo "📤 Uploading $video..."
+            python scripts/upload_to_drive.py "$video" "101AIv9yfWOGfLl29gb74-n49xzcL2iCn"
+        done < new_videos.txt
