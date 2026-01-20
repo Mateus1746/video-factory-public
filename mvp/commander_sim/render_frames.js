@@ -53,18 +53,29 @@ async function renderSimulation(file, type, port) {
     // Esperar pelo sinal de pronto
     console.log("Aguardando inicialização do motor e dados do mapa...");
     let isReady = false;
-    for (let i = 0; i < 40; i++) {
-        isReady = await page.evaluate(() => {
-            return window.gameInstance && window.gameInstance.isReady && window.gameInstance.buildings.length > 0;
+    for (let i = 0; i < 60; i++) {
+        const state = await page.evaluate(() => {
+            const g = window.gameInstance;
+            return {
+                exists: !!g,
+                ready: g ? g.isReady : false,
+                buildings: g ? g.buildings.length : 0
+            };
         });
-        if (isReady) break;
-        await new Promise(r => setTimeout(r, 250));
+        
+        if (state.exists && state.ready && state.buildings > 0) {
+            isReady = true;
+            break;
+        }
+        
+        if (i % 10 === 0) console.log(`⏳ Aguardando... (Game: ${state.exists}, Ready: ${state.ready}, Buildings: ${state.buildings})`);
+        await new Promise(r => setTimeout(r, 500));
     }
 
     if (!isReady) {
         console.error("❌ Erro: Motor não inicializou a tempo.");
         await browser.close();
-        return;
+        process.exit(1); // Force failure
     }
 
     let frameCount = 0;
