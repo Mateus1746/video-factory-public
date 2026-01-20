@@ -54,6 +54,10 @@ jobs:
         echo "🎬 Generating Commander Sim..."
         cd mvp/commander_sim
         python batch_pipeline.py
+    
+    - name: Tag Commander Sim
+      if: steps.gen_commander.outcome == 'success'
+      run: python scripts/tag_video.py --dir mvp/commander_sim --project "Commander_Sim"
 
     # --- PROJECT: Vibe Geometry ---
     - name: Run Vibe Geometry
@@ -65,6 +69,10 @@ jobs:
         # batch_pipeline uses 'uv run', so uv must be installed (done above)
         python batch_pipeline.py 1 # Generate 1 video
 
+    - name: Tag Vibe Geometry
+      if: steps.gen_vibe.outcome == 'success'
+      run: python scripts/tag_video.py --dir mvp/vibe_geometry/batch_output --project "Vibe_Geometry"
+
     # --- PROJECT: Fortress Merge ---
     - name: Run Fortress Merge
       id: gen_fortress
@@ -73,6 +81,10 @@ jobs:
         echo "🎬 Generating Fortress Merge..."
         cd mvp/fortress_merge
         python batch_pipeline.py
+    
+    - name: Tag Fortress Merge
+      if: steps.gen_fortress.outcome == 'success'
+      run: python scripts/tag_video.py --dir mvp/fortress_merge --project "Fortress_Merge"
 
     # --- PROJECT: Marble War ---
     - name: Run Marble War
@@ -83,6 +95,10 @@ jobs:
         cd "mvp/marble war"
         python batch_pipeline.py
 
+    - name: Tag Marble War
+      if: steps.gen_marble.outcome == 'success'
+      run: python scripts/tag_video.py --dir "mvp/marble war" --project "Marble_War"
+
     # --- PROJECT: Roguelike Survival ---
     - name: Run Roguelike Survival
       id: gen_rogue
@@ -92,6 +108,10 @@ jobs:
         cd mvp/roguelike_survival_
         python batch_pipeline.py
 
+    - name: Tag Roguelike Survival
+      if: steps.gen_rogue.outcome == 'success'
+      run: python scripts/tag_video.py --dir mvp/roguelike_survival_ --project "Roguelike_Survival"
+
     # --- PROJECT: Arena of Algorithms ---
     - name: Run Arena of Algorithms
       id: gen_arena
@@ -100,6 +120,10 @@ jobs:
         echo "🎬 Generating Arena of Algorithms..."
         cd mvp/the_arena_of_algoritms
         python batch_pipeline.py
+    
+    - name: Tag Arena of Algorithms
+      if: steps.gen_arena.outcome == 'success'
+      run: python scripts/tag_video.py --dir mvp/the_arena_of_algoritms --project "Arena_Of_Algorithms"
 
     # --- PROJECT: Tower Defense ---
     - name: Run Tower Defense
@@ -109,6 +133,10 @@ jobs:
         echo "🎬 Generating Tower Defense..."
         cd mvp/tower_defense
         python batch_pipeline.py
+    
+    - name: Tag Tower Defense
+      if: steps.gen_tower.outcome == 'success'
+      run: python scripts/tag_video.py --dir mvp/tower_defense --project "Tower_Defense"
 
     # --- PROJECT: Velocity Odds ---
     - name: Run Velocity Odds
@@ -118,6 +146,10 @@ jobs:
         echo "🎬 Generating Velocity Odds..."
         cd mvp/velocity_odds
         python batch_pipeline.py
+    
+    - name: Tag Velocity Odds
+      if: steps.gen_velocity.outcome == 'success'
+      run: python scripts/tag_video.py --dir mvp/velocity_odds --project "Velocity_Odds"
 
     # --- UPLOAD STEP ---
     - name: Find and Upload All Videos
@@ -128,12 +160,19 @@ jobs:
       run: |
         echo "🔍 Searching for ALL generated MP4 files..."
         
-        # Find all mp4 files generated in the last 60 minutes
-        find . -name "*.mp4" -type f -mmin -360 > new_videos.txt
+        # Find all mp4 files generated in the last 360 minutes that start with "["
+        # This ensures we only upload the successfully tagged ones
+        find . -name "[*]*.mp4" -type f -mmin -360 > new_videos.txt
         
         if [ ! -s new_videos.txt ]; then
-            echo "⚠️ No new videos found."
-            exit 0
+            echo "⚠️ No new TAGGED videos found."
+            # Fallback: Find any mp4 just in case tag failed but generation worked
+            find . -name "*.mp4" -type f -mmin -360 > new_videos.txt
+        fi
+        
+        if [ ! -s new_videos.txt ]; then
+             echo "❌ Absolutely no videos found."
+             exit 0
         fi
 
         echo "🚀 Found videos to upload:"
