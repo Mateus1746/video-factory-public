@@ -77,7 +77,7 @@ def select_next_map(history, last_map):
     return chosen_map
 
 def run_step(step_name, command):
-    print(f"🔹 [{step_name}] Running: {" ".join(command)}")
+    print(f"🔹 [{step_name}] Running: {' '.join(command)}")
     try:
         subprocess.run(command, check=True)
         return True
