@@ -1,7 +1,7 @@
 name: Video Factory Pipeline
 
 on:
-  workflow_dispatch: # Allows manual trigger from GitHub UI
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -12,6 +12,7 @@ on:
 jobs:
   build-and-generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 360 # Allow 6 hours for batch processing
 
     steps:
     - name: Checkout Code
@@ -22,39 +23,31 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Set up Node.js
+    - name: Set up Node.js (for Web-based sims)
       uses: actions/setup-node@v3
       with:
         node-version: '18'
 
-    - name: Install System Dependencies (FFmpeg)
+    - name: Install System Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
-    - name: Install Python Libraries
+    - name: Install Python Tools (uv)
       run: |
         pip install --upgrade pip
+        pip install uv
         pip install -r requirements.txt
-        # Install project specific deps if any
-        pip install moviepy pillow scipy
+        # Common libs that might be needed across projects if not in requirements
+        pip install moviepy pillow scipy numpy pygame yt-dlp google-api-python-client google-auth-oauthlib google-auth-httplib2
 
-    - name: Install Node Dependencies (Commander Sim)
+    # --- PROJECT: Commander Sim ---
+    - name: Install Node Deps (Commander Sim)
       run: |
         cd mvp/commander_sim
         npm install
 
-    - name: Generate Video (Vibe Geometry)
-      id: gen_vibe
-      continue-on-error: true
-      run: |
-        echo "🎬 Generating Vibe Geometry..."
-        cd mvp/vibe_geometry
-        # Assuming batch_pipeline.py generates a video in a known location or 'output/'
-        # Adjust command based on actual file. Using generate_video.py as fallback if batch doesnt exist
-        python generate_video.py
-      
-    - name: Generate Video (Commander Sim)
+    - name: Run Commander Sim
       id: gen_commander
       continue-on-error: true
       run: |
@@ -62,17 +55,81 @@ jobs:
         cd mvp/commander_sim
         python batch_pipeline.py
 
-    - name: Find and Upload Videos
+    # --- PROJECT: Vibe Geometry ---
+    - name: Run Vibe Geometry
+      id: gen_vibe
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Vibe Geometry..."
+        cd mvp/vibe_geometry
+        # batch_pipeline uses 'uv run', so uv must be installed (done above)
+        python batch_pipeline.py 1 # Generate 1 video
+
+    # --- PROJECT: Fortress Merge ---
+    - name: Run Fortress Merge
+      id: gen_fortress
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Fortress Merge..."
+        cd mvp/fortress_merge
+        python batch_pipeline.py
+
+    # --- PROJECT: Marble War ---
+    - name: Run Marble War
+      id: gen_marble
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Marble War..."
+        cd "mvp/marble war"
+        python batch_pipeline.py
+
+    # --- PROJECT: Roguelike Survival ---
+    - name: Run Roguelike Survival
+      id: gen_rogue
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Roguelike Survival..."
+        cd mvp/roguelike_survival_
+        python batch_pipeline.py
+
+    # --- PROJECT: Arena of Algorithms ---
+    - name: Run Arena of Algorithms
+      id: gen_arena
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Arena of Algorithms..."
+        cd mvp/the_arena_of_algoritms
+        python batch_pipeline.py
+
+    # --- PROJECT: Tower Defense ---
+    - name: Run Tower Defense
+      id: gen_tower
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Tower Defense..."
+        cd mvp/tower_defense
+        python batch_pipeline.py
+
+    # --- PROJECT: Velocity Odds ---
+    - name: Run Velocity Odds
+      id: gen_velocity
+      continue-on-error: true
+      run: |
+        echo "🎬 Generating Velocity Odds..."
+        cd mvp/velocity_odds
+        python batch_pipeline.py
+
+    # --- UPLOAD STEP ---
+    - name: Find and Upload All Videos
       env:
         GDRIVE_CREDENTIALS_JSON: ${{ secrets.GDRIVE_CREDENTIALS_JSON }}
-        # Optional: Set a specific folder ID here if you want
-        # DRIVE_FOLDER_ID: "101AIv9yfWOGfLl29gb74-n49xzcL2iCn" 
+        # Optional: Drive Folder ID can be hardcoded here or passed to script
+        DRIVE_FOLDER_ID: "101AIv9yfWOGfLl29gb74-n49xzcL2iCn"
       run: |
-        echo "🔍 Searching for generated MP4 files..."
+        echo "🔍 Searching for ALL generated MP4 files..."
         
-        # Find all mp4 files generated in the last 10 minutes to avoid re-uploading old stuff (if cached)
-        # Using find command
-        find . -name "*.mp4" -type f -mmin -10 > new_videos.txt
+        # Find all mp4 files generated in the last 60 minutes
+        find . -name "*.mp4" -type f -mmin -360 > new_videos.txt
         
         if [ ! -s new_videos.txt ]; then
             echo "⚠️ No new videos found."
@@ -84,5 +141,6 @@ jobs:
 
         while IFS= read -r video; do
             echo "📤 Uploading $video..."
-            python scripts/upload_to_drive.py "$video" "101AIv9yfWOGfLl29gb74-n49xzcL2iCn"
+            # Pass folder ID as 2nd arg
+            python scripts/upload_to_drive.py "$video" "$DRIVE_FOLDER_ID"
         done < new_videos.txt
