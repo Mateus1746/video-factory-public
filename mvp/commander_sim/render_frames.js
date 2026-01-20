@@ -73,7 +73,7 @@ async function renderSimulation(file, type, port) {
     
     console.log("Processando frames...");
 
-    while (!finished && frameCount < 5400) { 
+    while (!finished && frameCount < 1800) { 
         const result = await page.evaluate(async () => {
             if (!window.gameInstance || !window.gameInstance.isReady) return { ready: false };
             
