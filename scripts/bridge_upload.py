@@ -34,6 +34,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.errors import HttpError # Moved here
 
 # Config
 DRIVE_FOLDER_ID = "101AIv9yfWOGfLl29gb74-n49xzcL2iCn"
@@ -194,10 +195,6 @@ def process_videos():
         project_meta = metadata_db.get(account['id'], {})
         default_meta = metadata_db.get('default_metadata', {})
         
-from googleapiclient.errors import HttpError
-
-# ... (inside process_videos loop) ...
-
         try:
             uploader = YouTubeUploader(str(token_file))
             
