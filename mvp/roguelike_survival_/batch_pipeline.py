@@ -95,7 +95,9 @@ def generate_simulation(index, output_dir):
             print(f"   Warning: Could not process audio: {e}")
 
     # Save Output to specific directory
-    output_filename = os.path.join(output_dir, f"neon-survivor-roguelike-survival-gameplay-{index+1}.mp4")
+    import time
+    timestamp = int(time.time())
+    output_filename = os.path.join(output_dir, f"neon_survivor_lab_{timestamp}_{index+1}.mp4")
     
     # Write final video (re-encoding needed to mix audio, but input is stream from disk)
     # Using 'fast' preset to speed up the second pass
