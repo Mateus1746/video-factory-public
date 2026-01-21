@@ -29,8 +29,16 @@ def tag_video(directory, project_name):
     # 2. Generate new name
     # Format: ProjectName_Timestamp.mp4
     timestamp = int(time.time())
-    new_filename = f"{project_name}_{timestamp}.mp4"
+    base_name = f"{project_name}_{timestamp}"
+    new_filename = f"{base_name}.mp4"
     new_path = os.path.join(os.path.dirname(latest_video), new_filename)
+    
+    # Ensure uniqueness loop
+    counter = 1
+    while os.path.exists(new_path):
+        new_filename = f"{base_name}_{counter}.mp4"
+        new_path = os.path.join(os.path.dirname(latest_video), new_filename)
+        counter += 1
     
     # 3. Rename
     try:
