@@ -1,18 +1,27 @@
-name: Video Factory Pipeline
+name: Video Factory Matrix
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'mvp/**'
-      - 'scripts/**'
+  workflow_dispatch: # Botão manual
+  schedule:
+    - cron: '0 12 * * *' # Roda todos os dias às 12:00 UTC (09:00 Horário de Brasília)
 
 jobs:
-  build-and-generate:
+  factory-worker:
+    name: 🏭 ${{ matrix.project.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # Allow 6 hours for batch processing
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false # Se um projeto falhar, não cancela os outros
+      matrix:
+        project:
+          - { name: "Commander Sim", path: "mvp/commander_sim", tag: "commander_sim", needs_node: true }
+          - { name: "Vibe Geometry", path: "mvp/vibe_geometry", tag: "vibe_geometry", needs_node: false }
+          - { name: "Fortress Merge", path: "mvp/fortress_merge", tag: "Fortress_merge", needs_node: false }
+          - { name: "Marble War", path: "mvp/marble war", tag: "marble_paint_war", needs_node: false }
+          - { name: "Roguelike", path: "mvp/roguelike_survival_", tag: "neon_survivor_lab", needs_node: false }
+          - { name: "Arena Algos", path: "mvp/the_arena_of_algoritms", tag: "the_arena_of_algoritms", needs_node: false }
+          - { name: "Tower Defense", path: "mvp/tower_defense", tag: "tower_defense", needs_node: false }
+          - { name: "Velocity Odds", path: "mvp/velocity_odds", tag: "velocity_odds", needs_node: false }
 
     steps:
     - name: Checkout Code
@@ -23,7 +32,8 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Set up Node.js (for Web-based sims)
+    - name: Set up Node.js (Conditional)
+      if: ${{ matrix.project.needs_node }}
       uses: actions/setup-node@v3
       with:
         node-version: '18'
@@ -38,139 +48,56 @@ jobs:
         pip install --upgrade pip
         pip install uv
         pip install -r requirements.txt
-        # Common libs that might be needed across projects if not in requirements
+        # Ensure all potential deps are present for any project
         pip install moviepy pillow scipy numpy pygame yt-dlp google-api-python-client google-auth-oauthlib google-auth-httplib2
 
-    # --- PROJECT: Commander Sim ---
-    - name: Install Node Deps (Commander Sim)
+    - name: Install Node Deps (Conditional)
+      if: ${{ matrix.project.needs_node }}
       run: |
-        cd mvp/commander_sim
+        cd "${{ matrix.project.path }}"
         npm install
 
-    - name: Run Commander Sim
-      id: gen_commander
-      continue-on-error: true
+    - name: 🎬 Generate Videos (Batch 5)
+      id: generate
       run: |
-        echo "🎬 Generating Commander Sim..."
-        cd mvp/commander_sim
-        python batch_pipeline.py 1
-    
-    - name: Tag Commander Sim
-      if: steps.gen_commander.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/commander_sim --project "commander_sim"
+        echo "🚀 Starting generation for ${{ matrix.project.name }}..."
+        cd "${{ matrix.project.path }}"
+        # Run batch pipeline generating 5 videos
+        python batch_pipeline.py 5
 
-    # --- PROJECT: Vibe Geometry ---
-    - name: Run Vibe Geometry
-      id: gen_vibe
-      continue-on-error: true
+    - name: 🏷️ Tag Videos
+      if: steps.generate.outcome == 'success'
       run: |
-        echo "🎬 Generating Vibe Geometry..."
-        cd mvp/vibe_geometry
-        python batch_pipeline.py 1
+        # Tagging script iterates through untagged mp4s in the folder
+        python scripts/tag_video.py --dir "${{ matrix.project.path }}" --project "${{ matrix.project.tag }}"
+        # Run it multiple times or loop inside the script? 
+        # The script currently finds the *latest* untagged video.
+        # Since we generated 5, we need to ensure all 5 get tagged.
+        # Let's run it in a loop until no more untagged files are found.
+        
+        for i in {1..10}; do
+          python scripts/tag_video.py --dir "${{ matrix.project.path }}" --project "${{ matrix.project.tag }}" || break
+        done
 
-    - name: Tag Vibe Geometry
-      if: steps.gen_vibe.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/vibe_geometry/batch_output --project "vibe_geometry"
-
-    # --- PROJECT: Fortress Merge ---
-    - name: Run Fortress Merge
-      id: gen_fortress
-      continue-on-error: true
-      run: |
-        echo "🎬 Generating Fortress Merge..."
-        cd mvp/fortress_merge
-        python batch_pipeline.py 1
-
-    - name: Tag Fortress Merge
-      if: steps.gen_fortress.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/fortress_merge --project "Fortress_merge"
-
-    # --- PROJECT: Marble War ---
-    - name: Run Marble War
-      id: gen_marble
-      continue-on-error: true
-      run: |
-        echo "🎬 Generating Marble War..."
-        cd "mvp/marble war"
-        python batch_pipeline.py 1
-
-    - name: Tag Marble War
-      if: steps.gen_marble.outcome == 'success'
-      run: python scripts/tag_video.py --dir "mvp/marble war" --project "marble_paint_war"
-
-    # --- PROJECT: Roguelike Survival ---
-    - name: Run Roguelike Survival
-      id: gen_rogue
-      continue-on-error: true
-      run: |
-        echo "🎬 Generating Roguelike Survival..."
-        cd mvp/roguelike_survival_
-        python batch_pipeline.py 1
-
-    - name: Tag Roguelike Survival
-      if: steps.gen_rogue.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/roguelike_survival_ --project "neon_survivor_lab"
-
-    # --- PROJECT: Arena of Algorithms ---
-    - name: Run Arena of Algorithms
-      id: gen_arena
-      continue-on-error: true
-      run: |
-        echo "🎬 Generating Arena of Algorithms..."
-        cd mvp/the_arena_of_algoritms
-        python batch_pipeline.py 1
-    
-    - name: Tag Arena of Algorithms
-      if: steps.gen_arena.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/the_arena_of_algoritms --project "the_arena_of_algoritms"
-
-    # --- PROJECT: Tower Defense ---
-    - name: Run Tower Defense
-      id: gen_tower
-      continue-on-error: true
-      run: |
-        echo "🎬 Generating Tower Defense..."
-        cd mvp/tower_defense
-        python batch_pipeline.py 1
-    
-    - name: Tag Tower Defense
-      if: steps.gen_tower.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/tower_defense --project "tower_defense"
-
-    # --- PROJECT: Velocity Odds ---
-    - name: Run Velocity Odds
-      id: gen_velocity
-      continue-on-error: true
-      run: |
-        echo "🎬 Generating Velocity Odds..."
-        cd mvp/velocity_odds
-        python batch_pipeline.py 1
-    
-    - name: Tag Velocity Odds
-      if: steps.gen_velocity.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/velocity_odds --project "velocity_odds"
-
-    # --- UPLOAD STEP ---
-    - name: Find and Upload All Videos
+    - name: 📤 Upload to Drive
       env:
         GDRIVE_CREDENTIALS_JSON: ${{ secrets.GDRIVE_CREDENTIALS_JSON }}
         DRIVE_FOLDER_ID: "101AIv9yfWOGfLl29gb74-n49xzcL2iCn"
       run: |
-        echo "🔍 Searching for ALL generated MP4 files..."
+        echo "🔍 Searching for generated videos in ${{ matrix.project.path }}..."
         
-        # Find all mp4 files generated in the last 360 minutes
-        # Excluding temp files just in case
-        find . -name "*.mp4" -type f -mmin -360 ! -name "temp*" > new_videos.txt
+        # Find all MP4s in the project folder that match the tag pattern (meaning they were successfully tagged)
+        find "${{ matrix.project.path }}" -name "${{ matrix.project.tag }}_*.mp4" -type f -mmin -360 > upload_list.txt
         
-        if [ ! -s new_videos.txt ]; then
-             echo "❌ No videos found."
-             exit 0
+        if [ ! -s upload_list.txt ]; then
+            echo "⚠️ No videos found for upload."
+            exit 0
         fi
 
-        echo "🚀 Found videos to upload:"
-        cat new_videos.txt
+        echo "🚀 Uploading files:"
+        cat upload_list.txt
 
         while IFS= read -r video; do
             echo "📤 Uploading $video..."
             python scripts/upload_to_drive.py "$video" "$DRIVE_FOLDER_ID"
-        done < new_videos.txt
+        done < upload_list.txt
