@@ -23,7 +23,7 @@ def generate_batch(count):
                 os.makedirs(batch_dir, exist_ok=True)
                 import time
                 timestamp = int(time.time())
-                target_name = os.path.join(batch_dir, f"velocity_{timestamp}_{i}.mp4")
+                target_name = os.path.join(batch_dir, f"velocity_odds_{timestamp}_{i}.mp4")
                 os.rename(output_path, target_name)
                 print(f"✅ Saved: {target_name}")
             else:

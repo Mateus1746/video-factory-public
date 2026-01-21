@@ -25,15 +25,16 @@ def run_batch(count, output_dir):
             subprocess.run(["uv", "run", "--with", "pygame", script_path], cwd=script_dir, check=True)
             
             # Move generated mp4 files to output_dir
-            # We look for files created in the last minute matching our pattern or just move all .mp4s
-            # that are not temp files.
-            
-            for f in os.listdir("."):
-                if f.endswith(".mp4") and "vs" in f:
-                    src = f
-                    dst = os.path.join(output_dir, f)
-                    shutil.move(src, dst)
-                    print(f"Moved {f} to {output_dir}")
+            # The headless script now forces 'output_render.mp4'
+            source_file = "output_render.mp4"
+            if os.path.exists(source_file):
+                timestamp = int(time.time())
+                new_name = f"the_arena_of_algoritms_{timestamp}_{i}.mp4"
+                dst = os.path.join(output_dir, new_name)
+                shutil.move(source_file, dst)
+                print(f"✅ Moved {source_file} to {dst}")
+            else:
+                print(f"❌ Error: {source_file} not found after simulation.")
                     
         except subprocess.CalledProcessError as e:
             print(f"Simulation {i+1} failed with code {e.returncode}")
