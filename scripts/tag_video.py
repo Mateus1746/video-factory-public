@@ -7,12 +7,16 @@ import argparse
 
 def tag_video(directory, project_name):
     # 1. Find the latest MP4 file in the directory
-    # We ignore files that already start with "[" to avoid re-tagging
     search_pattern = os.path.join(directory, "*.mp4")
     files = glob.glob(search_pattern)
     
-    # Filter out already tagged files
-    candidates = [f for f in files if not os.path.basename(f).startswith("[")]
+    # Filter out files that already start with the project name to avoid re-tagging
+    # Also ignore temp files if any still exist
+    candidates = [
+        f for f in files 
+        if not os.path.basename(f).startswith(project_name)
+        and "temp" not in os.path.basename(f)
+    ]
     
     if not candidates:
         print(f"⚠️ No new untagged MP4 files found in {directory}")
@@ -23,10 +27,9 @@ def tag_video(directory, project_name):
     latest_video = candidates[0]
     
     # 2. Generate new name
-    # Format: [ProjectName]_Timestamp.mp4
-    # The timestamp ensures uniqueness
+    # Format: ProjectName_Timestamp.mp4
     timestamp = int(time.time())
-    new_filename = f"[{project_name}]_{timestamp}.mp4"
+    new_filename = f"{project_name}_{timestamp}.mp4"
     new_path = os.path.join(os.path.dirname(latest_video), new_filename)
     
     # 3. Rename
@@ -45,6 +48,7 @@ if __name__ == "__main__":
     
     if not os.path.exists(args.dir):
         print(f"❌ Directory not found: {args.dir}")
-        sys.exit(1)
+        # Don't exit with error code 1 here, just warn, so workflow continues
+        sys.exit(0)
         
     tag_video(args.dir, args.project)

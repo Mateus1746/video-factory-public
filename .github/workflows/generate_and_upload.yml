@@ -53,11 +53,11 @@ jobs:
       run: |
         echo "🎬 Generating Commander Sim..."
         cd mvp/commander_sim
-        python batch_pipeline.py 1 # LIMIT TO 1 VIDEO
+        python batch_pipeline.py 1
     
     - name: Tag Commander Sim
       if: steps.gen_commander.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/commander_sim --project "Commander_Sim"
+      run: python scripts/tag_video.py --dir mvp/commander_sim --project "commander_sim"
 
     # --- PROJECT: Vibe Geometry ---
     - name: Run Vibe Geometry
@@ -70,7 +70,7 @@ jobs:
 
     - name: Tag Vibe Geometry
       if: steps.gen_vibe.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/vibe_geometry/batch_output --project "Vibe_Geometry"
+      run: python scripts/tag_video.py --dir mvp/vibe_geometry/batch_output --project "vibe_geometry"
 
     # --- PROJECT: Fortress Merge ---
     - name: Run Fortress Merge
@@ -83,7 +83,7 @@ jobs:
 
     - name: Tag Fortress Merge
       if: steps.gen_fortress.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/fortress_merge --project "Fortress_Merge"
+      run: python scripts/tag_video.py --dir mvp/fortress_merge --project "Fortress_merge"
 
     # --- PROJECT: Marble War ---
     - name: Run Marble War
@@ -96,7 +96,7 @@ jobs:
 
     - name: Tag Marble War
       if: steps.gen_marble.outcome == 'success'
-      run: python scripts/tag_video.py --dir "mvp/marble war" --project "Marble_War"
+      run: python scripts/tag_video.py --dir "mvp/marble war" --project "marble_paint_war"
 
     # --- PROJECT: Roguelike Survival ---
     - name: Run Roguelike Survival
@@ -109,7 +109,7 @@ jobs:
 
     - name: Tag Roguelike Survival
       if: steps.gen_rogue.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/roguelike_survival_ --project "Roguelike_Survival"
+      run: python scripts/tag_video.py --dir mvp/roguelike_survival_ --project "neon_survivor_lab"
 
     # --- PROJECT: Arena of Algorithms ---
     - name: Run Arena of Algorithms
@@ -122,7 +122,7 @@ jobs:
     
     - name: Tag Arena of Algorithms
       if: steps.gen_arena.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/the_arena_of_algoritms --project "Arena_Of_Algorithms"
+      run: python scripts/tag_video.py --dir mvp/the_arena_of_algoritms --project "the_arena_of_algoritms"
 
     # --- PROJECT: Tower Defense ---
     - name: Run Tower Defense
@@ -135,7 +135,7 @@ jobs:
     
     - name: Tag Tower Defense
       if: steps.gen_tower.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/tower_defense --project "Tower_Defense"
+      run: python scripts/tag_video.py --dir mvp/tower_defense --project "tower_defense"
 
     # --- PROJECT: Velocity Odds ---
     - name: Run Velocity Odds
@@ -148,7 +148,7 @@ jobs:
     
     - name: Tag Velocity Odds
       if: steps.gen_velocity.outcome == 'success'
-      run: python scripts/tag_video.py --dir mvp/velocity_odds --project "Velocity_Odds"
+      run: python scripts/tag_video.py --dir mvp/velocity_odds --project "velocity_odds"
 
     # --- UPLOAD STEP ---
     - name: Find and Upload All Videos
@@ -158,16 +158,12 @@ jobs:
       run: |
         echo "🔍 Searching for ALL generated MP4 files..."
         
-        # Find all tagged videos generated in the last 60 mins
-        find . -name "[*]*.mp4" -type f -mmin -360 > new_videos.txt
+        # Find all mp4 files generated in the last 360 minutes
+        # Excluding temp files just in case
+        find . -name "*.mp4" -type f -mmin -360 ! -name "temp*" > new_videos.txt
         
         if [ ! -s new_videos.txt ]; then
-            echo "⚠️ No new TAGGED videos found. Trying untagged..."
-            find . -name "*.mp4" -type f -mmin -360 > new_videos.txt
-        fi
-        
-        if [ ! -s new_videos.txt ]; then
-             echo "❌ Absolutely no videos found."
+             echo "❌ No videos found."
              exit 0
         fi
 
