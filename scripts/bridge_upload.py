@@ -73,21 +73,43 @@ def load_accounts():
         return json.load(f)
 
 def get_account_for_file(filename, accounts):
-    # Filename format: project_name_workerID_timestamp.mp4
-    # Example: marble war_1_170000.mp4 (spaces might be underscores or kept) 
+    # Normalize filename: remove brackets, extension, and lowercase
+    filename_clean = filename.lower().replace("[", "").replace("]", "")
+    filename_clean = os.path.splitext(filename_clean)[0]
     
-    # Try to match largest possible project name
-    filename_clean = filename.lower()
-    
+    # Explicit Mappings (Short name in file -> Project ID in accounts.json)
+    # Update these keys based on what your filenames look like
+    mappings = {
+        "fortress": "Fortress Merge",
+        "velocity": "Velocity Odds",
+        "sim": "Commander Sim",
+        "commander": "Commander Sim",
+        "neon": "Neon Survivor Lab", # Assuming this ID in accounts.json
+        "rogue": "Neon Survivor Lab",
+        "marble": "Marble Paint War",
+        "arena": "The Arena of Algoritms",
+        "tower": "Tower Defense",
+        "vibe": "Vibe Geometry"
+    }
+
+    # 1. Try Explicit Mapping
+    for key, project_id in mappings.items():
+        if key in filename_clean:
+            # Find the account object for this ID
+            for acc in accounts:
+                if acc['id'].lower() == project_id.lower() or acc['id'].replace(" ", "_").lower() == project_id.replace(" ", "_").lower():
+                    return acc
+
+    # 2. Try Standard Fuzzy Match
     best_match = None
     max_len = 0
     
     for acc in accounts:
         proj_id = acc['id'].lower()
-        # Handle spaces vs underscores
-        proj_id_us = proj_id.replace(" ", "_")
+        proj_id_clean = proj_id.replace(" ", "_").replace("-", "_")
         
-        if filename_clean.startswith(proj_id) or filename_clean.startswith(proj_id_us):
+        # Check if project ID is inside filename
+        if proj_id in filename_clean or proj_id_clean in filename_clean:
             if len(proj_id) > max_len:
                 best_match = acc
                 max_len = len(proj_id)
