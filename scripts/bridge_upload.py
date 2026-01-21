@@ -22,9 +22,10 @@ print(f"📂 Added to PYTHONPATH: {ORCHESTRATOR_ROOT}")
 
 try:
     from brain.modules.youtube_uploader import YouTubeUploader
-    print("✅ Successfully imported YouTubeUploader from brain!")
+    from brain.modules.database import DatabaseManager # Import DatabaseManager
+    print("✅ Successfully imported YouTubeUploader and DatabaseManager from brain!")
 except ImportError as e:
-    print(f"❌ Error: Could not import YouTubeUploader. Details: {e}")
+    print(f"❌ Error: Could not import modules from brain. Details: {e}")
     print(f"PYTHONPATH: {sys.path}")
     sys.exit(1)
 
@@ -38,6 +39,7 @@ from googleapiclient.http import MediaIoBaseDownload
 DRIVE_FOLDER_ID = "101AIv9yfWOGfLl29gb74-n49xzcL2iCn"
 DOWNLOAD_DIR = "downloaded_videos"
 SCOPES = ['https://www.googleapis.com/auth/drive']
+DB_PATH = BRAIN_PATH / "youtube_history.db" # Database location
 
 def get_drive_service():
     creds = None
@@ -204,6 +206,22 @@ def process_videos():
             
             if video_id:
                 print(f"🚀 Uploaded to YouTube! ID: {video_id}")
+                
+                # Register in Database for Autopilot
+                try:
+                    db = DatabaseManager(DB_PATH)
+                    video_data = {
+                        "video_id": video_id,
+                        "title": title,
+                        "description": description,
+                        "uploaded_at": time.time(),
+                        "path": str(Path(local_path).absolute()),
+                        "account_id": account['id']
+                    }
+                    db.add_to_pending(video_data)
+                    print(f"📝 Registered in Autopilot DB: {title}")
+                except Exception as db_err:
+                    print(f"⚠️ Failed to register in DB (Autopilot might miss this): {db_err}")
                 
                 # Delete from Drive (or move)
                 service.files().delete(fileId=file_id).execute()
