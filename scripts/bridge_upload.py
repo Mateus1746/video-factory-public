@@ -87,9 +87,9 @@ def get_account_for_file(filename, accounts):
         "velocity": "Velocity Odds",
         "sim": "Commander Sim",
         "commander": "Commander Sim",
-        "neon": "Neon Survivor Lab",
-        "roguelike": "Neon Survivor Lab",
-        "marble": "Marble War", # Corrected from Marble Paint War to likely Account ID
+        "neon": "roguelike_survival_", # Corrected ID
+        "roguelike": "roguelike_survival_", # Corrected ID
+        "marble": "Marble War",
         "paint_war": "Marble War",
         "arena": "The Arena of Algoritms",
         "tower": "Tower Defense",
