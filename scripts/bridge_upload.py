@@ -86,9 +86,10 @@ def get_account_for_file(filename, accounts):
         "velocity": "Velocity Odds",
         "sim": "Commander Sim",
         "commander": "Commander Sim",
-        "neon": "Neon Survivor Lab", # Assuming this ID in accounts.json
-        "rogue": "Neon Survivor Lab",
-        "marble": "Marble Paint War",
+        "neon": "Neon Survivor Lab",
+        "roguelike": "Neon Survivor Lab",
+        "marble": "Marble War", # Corrected from Marble Paint War to likely Account ID
+        "paint_war": "Marble War",
         "arena": "The Arena of Algoritms",
         "tower": "Tower Defense",
         "vibe": "Vibe Geometry"
@@ -99,7 +100,11 @@ def get_account_for_file(filename, accounts):
         if key in filename_clean:
             # Find the account object for this ID
             for acc in accounts:
-                if acc['id'].lower() == project_id.lower() or acc['id'].replace(" ", "_").lower() == project_id.replace(" ", "_").lower():
+                # Compare fuzzy match against account ID
+                acc_id_clean = acc['id'].lower().replace("_", " ")
+                target_id_clean = project_id.lower().replace("_", " ")
+                
+                if acc_id_clean == target_id_clean:
                     return acc
 
     # 2. Try Standard Fuzzy Match
@@ -189,6 +194,10 @@ def process_videos():
         project_meta = metadata_db.get(account['id'], {})
         default_meta = metadata_db.get('default_metadata', {})
         
+from googleapiclient.errors import HttpError
+
+# ... (inside process_videos loop) ...
+
         try:
             uploader = YouTubeUploader(str(token_file))
             
@@ -239,6 +248,27 @@ def process_videos():
             
         except Exception as e:
             print(f"❌ Upload Failed: {e}")
+            
+            # Check for Quota/Limit errors
+            error_str = str(e)
+            if "uploadLimitExceeded" in error_str or "quotaExceeded" in error_str:
+                print(f"🛑 Daily Upload Limit Reached for {account['id']}. Moving to postponed.")
+                
+                postponed_dir = os.path.join(CURRENT_DIR, "postponed_uploads")
+                if not os.path.exists(postponed_dir):
+                    os.makedirs(postponed_dir)
+                
+                target_path = os.path.join(postponed_dir, file_name)
+                os.rename(local_path, target_path)
+                print(f"📦 Moved {file_name} to {postponed_dir}")
+                
+                # Optional: Delete from Drive so we don't download it again immediately?
+                # Ideally yes, because we have it local now.
+                try:
+                    service.files().delete(fileId=file_id).execute()
+                    print("🗑️ Deleted from Drive (saved locally in postponed).")
+                except:
+                    pass
 
 if __name__ == "__main__":
     while True:
