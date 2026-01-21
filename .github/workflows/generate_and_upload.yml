@@ -68,15 +68,17 @@ jobs:
     - name: 🏷️ Tag Videos
       if: steps.generate.outcome == 'success'
       run: |
-        # Tagging script iterates through untagged mp4s in the folder
-        python scripts/tag_video.py --dir "${{ matrix.project.path }}" --project "${{ matrix.project.tag }}"
-        # Run it multiple times or loop inside the script? 
-        # The script currently finds the *latest* untagged video.
-        # Since we generated 5, we need to ensure all 5 get tagged.
-        # Let's run it in a loop until no more untagged files are found.
+        # Check if batch_output exists, otherwise use root
+        TARGET_DIR="${{ matrix.project.path }}"
+        if [ -d "${{ matrix.project.path }}/batch_output" ]; then
+          TARGET_DIR="${{ matrix.project.path }}/batch_output"
+        fi
         
+        echo "🏷️ Tagging videos in $TARGET_DIR..."
+        
+        # Run loop to catch multiple files
         for i in {1..10}; do
-          python scripts/tag_video.py --dir "${{ matrix.project.path }}" --project "${{ matrix.project.tag }}" || break
+          python scripts/tag_video.py --dir "$TARGET_DIR" --project "${{ matrix.project.tag }}" || break
         done
 
     - name: 📤 Upload to Drive
