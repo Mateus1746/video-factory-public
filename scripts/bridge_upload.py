@@ -153,14 +153,21 @@ def process_videos():
         
         # Download
         local_path = os.path.join(DOWNLOAD_DIR, file_name)
-        request = service.files().get_media(fileId=file_id)
-        fh = open(local_path, 'wb')
-        downloader = MediaIoBaseDownload(fh, request)
-        done = False
-        while done is False:
-            status, done = downloader.next_chunk()
-            print(f"Downloading {int(status.progress() * 100)}%...")
-        fh.close()
+        try:
+            request = service.files().get_media(fileId=file_id)
+            fh = open(local_path, 'wb')
+            downloader = MediaIoBaseDownload(fh, request)
+            done = False
+            while done is False:
+                status, done = downloader.next_chunk()
+                print(f"Downloading {int(status.progress() * 100)}%...")
+            fh.close()
+        except Exception as e:
+            print(f"❌ Download failed for {file_name}: {e}")
+            if os.path.exists(local_path):
+                fh.close()
+                os.remove(local_path)
+            continue
         
         # Upload to YouTube
         token_file = BRAIN_PATH / account['youtube_token']
