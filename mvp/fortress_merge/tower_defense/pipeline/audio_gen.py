@@ -10,8 +10,13 @@ except ImportError:
         from moviepy.audio.AudioClip import AudioArrayClip
         from moviepy.video.io.VideoFileClip import VideoFileClip
     except ImportError:
-        # Last resort for newer versions or mixed installs
-        from moviepy import AudioArrayClip, VideoFileClip
+        try:
+            from moviepy.audio.AudioClip import AudioArrayClip
+            from moviepy.video.VideoClip import VideoFileClip
+        except ImportError:
+            # Fallback for v2.0+
+            from moviepy.video.io.VideoFileClip import VideoFileClip
+            from moviepy.audio.AudioClip import AudioArrayClip
 
 class AudioEngine:
     def __init__(self, fps=44100):

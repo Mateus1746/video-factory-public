@@ -47,8 +47,8 @@ jobs:
         pip install --upgrade pip
         pip install uv
         pip install -r requirements.txt
-        # Ensure all potential deps are present for any project
-        pip install moviepy pillow scipy numpy pygame yt-dlp google-api-python-client google-auth-oauthlib google-auth-httplib2
+        # Ensure all other potential deps are present for any project
+        pip install pillow scipy numpy pygame yt-dlp google-api-python-client google-auth-oauthlib google-auth-httplib2
 
     - name: Debug Installed Packages
       run: pip list
