@@ -73,8 +73,13 @@ def render_single_video(video_index, args):
     """Worker function for multiprocessing"""
     setup_headless()
     import imageio
-    from moviepy import AudioFileClip, VideoFileClip
-    from moviepy.audio.fx.audio_fadeout import audio_fadeout
+    try:
+        from moviepy.editor import AudioFileClip, VideoFileClip
+        from moviepy.audio.fx.all import audio_fadeout
+    except ImportError:
+        # Fallback for newer moviepy versions or different structures
+        from moviepy import AudioFileClip, VideoFileClip
+        from moviepy.audio.fx import audio_fadeout
     
     # We must init pygame inside the process
     pygame.init()
