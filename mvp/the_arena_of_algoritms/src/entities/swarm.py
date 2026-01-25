@@ -1,22 +1,25 @@
 import pygame
 import math
 import random
+from .base import Entity
 from ..config import WHITE
 from ..audio import generate_note_sound
 from ..effects import spawn_particles
 
-class QuantumSwarm:
+class QuantumSwarm(Entity):
     """
     Quantum Swarm uses the concept of Superposition.
     Drones exist in multiple potential states (ghosts) and 
     'collapse' their wave function upon collision/attack.
     """
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+    NAME = "QUANTUM SWARM"
+    COLOR = (180, 0, 255)
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.drones = []
         self.num_drones = 6 # Increased from 4
-        self.color = (180, 0, 255) # Purple
+        self.color = self.COLOR # Purple
         
         for _ in range(self.num_drones):
             self.drones.append({

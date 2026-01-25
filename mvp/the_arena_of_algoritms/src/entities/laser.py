@@ -1,21 +1,24 @@
 import pygame
 import math
 import random
-from ..config import WHITE
+from .base import Entity
+from ..config import WHITE, HALF_HEIGHT, SCREEN_HEIGHT, LASER_SPEED, LASER_DPS, LASER_SCAN_RANGE, LASER_COLOR
 from ..audio import generate_note_sound
 from ..effects import create_glow_surface, spawn_particles
 
-class LaserSweeper:
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+class LaserSweeper(Entity):
+    NAME = "LASER SWEEPER"
+    COLOR = LASER_COLOR
+    
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.x_offset = 0
         self.direction = 1
-        self.speed = 300
-        self.color = (50, 255, 255) 
-        self.damage_per_sec = 35000 # Increased damage (+25%) 
+        self.speed = LASER_SPEED
+        self.color = LASER_COLOR
+        self.damage_per_sec = LASER_DPS
         self.width = 10 
-        self.max_scan = 350
+        self.max_scan = LASER_SCAN_RANGE
 
     def update(self, dt):
         if not self.rings: return
@@ -62,8 +65,6 @@ class LaserSweeper:
         
         # Draw Beam
         if self.rings:
-            from ..config import HALF_HEIGHT, SCREEN_HEIGHT
-            
             # Determine Territory Boundaries based on center
             if self.center[1] < HALF_HEIGHT:
                 # Top Territory
@@ -75,10 +76,6 @@ class LaserSweeper:
                 max_y = SCREEN_HEIGHT
 
             # Draw vertical beam spanning the territory (or reasonable range)
-            # We want it to look like it's scanning the rings.
-            # Rings are centered at self.center.
-            # Draw from center - 400 to center + 400, but clamped.
-            
             y1 = max(min_y, self.center[1] - 400)
             y2 = min(max_y, self.center[1] + 400)
             

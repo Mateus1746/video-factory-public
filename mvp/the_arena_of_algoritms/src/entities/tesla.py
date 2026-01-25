@@ -1,22 +1,25 @@
 import pygame
 import math
 import random
+from .base import Entity
 from ..config import WHITE
 from ..audio import generate_note_sound
 from ..effects import spawn_particles
 
-class TeslaStorm:
+class TeslaStorm(Entity):
     """
     Tesla Storm uses Recursive Midpoint Displacement (Fractal logic)
     to generate jagged lightning arcs between targets.
     """
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+    NAME = "TESLA STORM"
+    COLOR = (200, 200, 255)
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.timer = 0.0
         self.interval = 0.15 # Faster strikes
         self.arcs = []
-        self.color = (200, 200, 255) # Electric Blue-White
+        self.color = self.COLOR # Electric Blue-White
         
     def update(self, dt):
         self.timer -= dt

@@ -1,21 +1,14 @@
 import pygame
 import math
 import random
+import os
 from src.config import *
 from src.utils import draw_glow
 
 _enemy_id_counter = 0
 
 class Enemy:
-    # Static Data Map for cleaner initialization
-    DATA = {
-        "common": {"radius": 18, "speed": 110, "health": 35, "color": COLOR_ENEMY_COMMON, "damage": 12},
-        "fast": {"radius": 14, "speed": 210, "health": 20, "color": COLOR_ENEMY_FAST, "damage": 8},
-        "tank": {"radius": 35, "speed": 80, "health": 200, "color": COLOR_ENEMY_TANK, "damage": 25},
-        "swarm": {"radius": 10, "speed": 160, "health": 10, "color": COLOR_ENEMY_SWARM, "damage": 5},
-        "elite": {"radius": 26, "speed": 100, "health": 500, "color": COLOR_ENEMY_ELITE, "damage": 20},
-        "boss": {"radius": 90, "speed": 70, "health": 10000, "color": COLOR_ENEMY_BOSS, "damage": 50}
-    }
+    _SPRITE_CACHE = {}
 
     def __init__(self, x: float, y: float, enemy_type="common", time_multiplier=1.0):
         global _enemy_id_counter
@@ -24,38 +17,78 @@ class Enemy:
         
         self.type = enemy_type
         self.pos = pygame.Vector2(x, y)
-        self.angle = 0.0 
+        self.angle = random.uniform(0, 360) 
         self.damage_cooldown = 0.0
         self.flash_timer = 0.0
         
-        stats = self.DATA.get(enemy_type, self.DATA["common"])
+        # Spawn Animation
+        self.spawn_timer = 0.0
+        self.spawn_duration = 0.5 
+        
+        stats = ENEMY_STATS.get(enemy_type, ENEMY_STATS["common"])
         self.radius = stats["radius"]
         self.speed = stats["speed"] * (1.0 + (time_multiplier - 1.0) * 0.5)
         self.max_health = stats["health"] * time_multiplier
         self.health = self.max_health
-        self.color = stats["color"]
         self.damage = stats["damage"] * time_multiplier
+        self.color = ENEMY_COLORS.get(enemy_type, (255, 255, 255))
+        
+        self.sprite = self._load_sprite()
+        self.hit_sprite = self._load_sprite(hit=True)
+        self.bob_timer = random.uniform(0, math.tau)
+        self.rotation_speed = random.uniform(50, 150) if enemy_type != "boss" else 30
+
+    def _load_sprite(self, hit=False):
+        cache_key = (self.type, hit)
+        if cache_key in self._SPRITE_CACHE:
+            return self._SPRITE_CACHE[cache_key]
+
+        file_map = {
+            "common": "slime.png", "swarm": "slime.png", "fast": "slime.png",
+            "tank": "golem-de-pedra.png", "elite": "golem-de-pedra.png", "boss": "golem-de-pedra.png"
+        }
+        
+        filename = file_map.get(self.type, "slime.png")
+        if hit and self.type in ["tank", "elite", "boss"]:
+            filename = "golem-de-pedra-sendo-atacado.png"
+            
+        path = os.path.join("assets/sprites/enemies", filename)
+        if os.path.exists(path):
+            surf = pygame.image.load(path).convert_alpha()
+            scale_factor = 2.5 if self.type != "boss" else 2.2
+            size = int(self.radius * scale_factor)
+            surf = pygame.transform.scale(surf, (size, size))
+            
+            if hit and not "atacado" in filename:
+                hit_surf = surf.copy()
+                hit_surf.fill((255, 255, 255, 200), special_flags=pygame.BLEND_RGBA_ADD)
+                surf = hit_surf
+                
+            self._SPRITE_CACHE[cache_key] = surf
+            return surf
+        return None
 
     def update(self, dt: float, player, camera):
+        if self.spawn_timer < self.spawn_duration:
+            self.spawn_timer += dt
+            return 
+
         if not player.is_alive(): return
         
-        # Behavior Logic
+        self.bob_timer += 5 * dt
+        self.angle += self.rotation_speed * dt
+        
         current_speed = self.speed
         if self.type == "boss":
             health_pct = self.health / self.max_health
             current_speed *= (1.0 + (1.0 - health_pct))
-            self.angle += 3.0 * dt
-        else:
-            self.angle += 2.0 * dt
 
-        # Movement towards player
         target = pygame.Vector2(player.x, player.y)
         dir_vec = (target - self.pos)
         dist = dir_vec.length()
         if dist > 0:
             self.pos += dir_vec.normalize() * current_speed * dt
 
-        # Damage Logic
         if self.damage_cooldown > 0:
             self.damage_cooldown -= dt
         elif dist < self.radius + player.radius:
@@ -67,43 +100,52 @@ class Enemy:
             self.flash_timer -= dt
 
     def take_damage(self, amount: int):
+        if self.spawn_timer < self.spawn_duration: return 
         self.health -= amount
-        self.flash_timer = 0.1
+        self.flash_timer = 0.15
 
     def is_dead(self) -> bool:
         return self.health <= 0
 
-    def draw(self, screen: pygame.Surface, offset):
-        ox, oy = offset
-        cx, cy = int(self.pos.x + ox), int(self.pos.y + oy)
-        color = (255, 255, 255) if self.flash_timer > 0 else self.color
+    def draw(self, screen: pygame.Surface, camera):
+        pos = camera.apply(self.pos.x, self.pos.y)
+        rad = camera.apply_scale(self.radius)
+        scale = camera.zoom
         
-        if self.flash_timer <= 0:
-            draw_glow(screen, self.color, (cx, cy), self.radius)
-
-        if self.type == "boss":
-            self._draw_boss(screen, cx, cy, color)
-        elif self.type == "elite":
-            self._draw_elite(screen, cx, cy, color)
+        spawn_pct = min(1.0, self.spawn_timer / self.spawn_duration)
+        sprite_to_draw = self.hit_sprite if self.flash_timer > 0 else self.sprite
+        
+        if sprite_to_draw:
+            squash = 1.0 + math.sin(self.bob_timer) * 0.1
+            stretch = 1.0 - math.sin(self.bob_timer) * 0.1
+            
+            render_surf = sprite_to_draw
+            if self.type != "boss":
+                render_surf = pygame.transform.rotate(sprite_to_draw, self.angle * 0.2)
+            
+            w, h = render_surf.get_size()
+            new_w = int(w * squash * scale * (0.5 + 0.5 * spawn_pct))
+            new_h = int(h * stretch * scale * (0.5 + 0.5 * spawn_pct))
+            
+            if new_w > 0 and new_h > 0:
+                render_surf = pygame.transform.scale(render_surf, (new_w, new_h))
+                if spawn_pct < 1.0:
+                    render_surf.set_alpha(int(255 * spawn_pct))
+                
+                rect = render_surf.get_rect(center=pos)
+                screen.blit(render_surf, rect)
+            
+            if self.type == "boss" and spawn_pct >= 1.0:
+                self._draw_boss_hp(screen, pos, rad)
         else:
-            pygame.draw.circle(screen, color, (cx, cy), self.radius)
+            # Fallback
+            color = (255, 255, 255) if self.flash_timer > 0 else self.color
+            pygame.draw.circle(screen, color, pos, rad)
 
-    def _draw_boss(self, screen, cx, cy, color):
-        pts = []
-        for i in range(8):
-            theta = self.angle + (i * 0.785)
-            pts.append((cx + math.cos(theta) * self.radius, cy + math.sin(theta) * self.radius))
-        pygame.draw.polygon(screen, color, pts)
-        pygame.draw.polygon(screen, COLOR_TEXT, pts, 4)
-        
-        # Floating HP Bar
+    def _draw_boss_hp(self, screen, pos, rad):
+        cx, cy = pos
         hp_pct = max(0, self.health / self.max_health)
-        pygame.draw.rect(screen, (40, 0, 0), (cx - 80, cy - self.radius - 30, 160, 12))
-        pygame.draw.rect(screen, COLOR_ENEMY_BOSS, (cx - 80, cy - self.radius - 30, 160 * hp_pct, 12))
-
-    def _draw_elite(self, screen, cx, cy, color):
-        pts = []
-        for i in range(4):
-            theta = self.angle + (i * 1.57)
-            pts.append((cx + math.cos(theta) * self.radius * 1.3, cy + math.sin(theta) * self.radius * 1.3))
-        pygame.draw.polygon(screen, color, pts)
+        bar_w = rad * 2.5
+        pygame.draw.rect(screen, (20, 0, 0), (cx - bar_w/2, cy - rad - 40, bar_w, 14), border_radius=7)
+        pygame.draw.rect(screen, self.color, (cx - bar_w/2, cy - rad - 40, bar_w * hp_pct, 14), border_radius=7)
+        pygame.draw.rect(screen, (255, 255, 255), (cx - bar_w/2, cy - rad - 40, bar_w, 14), 2, border_radius=7)

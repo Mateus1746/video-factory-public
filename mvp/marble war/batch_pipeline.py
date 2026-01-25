@@ -1,75 +1,83 @@
 #!/usr/bin/env python3
 """
-Batch Pipeline for Marble War Video Generation.
-Uses streaming rendering (no frames/ directory).
+Batch Pipeline for Marble War (Refactored).
+Orchestrates VideoGenerator and AudioRenderer for continuous production.
 """
 
-import os
 import sys
-import subprocess
 import time
 from pathlib import Path
 
-# Add project root for brain access
-project_root = Path(__file__).resolve().parents[2]
+# Add project root to path
+project_root = Path(__file__).resolve().parent
 if str(project_root) not in sys.path:
     sys.path.append(str(project_root))
 
+from video_generator import VideoGenerator
+from audio_renderer import AudioRenderer
+
 try:
+    # Optional integration
+    sys.path.append(str(project_root.parents[2])) # Grandparent
     from brain.shorts_autopilot import ShortsAutopilot
 except ImportError:
-    print("⚠️ Warning: Could not import ShortsAutopilot. Integration disabled.")
     ShortsAutopilot = None
 
-def generate_batch(count):
-    print(f"🚀 Batch Pipeline: Marble War (Count: {count})")
-    
-    script_dir = Path(__file__).parent
-    batch_dir = script_dir / "batch_output"
-    batch_dir.mkdir(exist_ok=True)
+import sys
+import time
+import concurrent.futures
+from pathlib import Path
 
-    for i in range(count):
-        print(f"\n{'='*50}")
-        print(f"🎬 VIDEO {i+1}/{count}")
-        print(f"{'='*50}\n")
+# ... (imports)
+
+def process_single_video(index, count, output_dir):
+    """Worker function for parallel processing."""
+    print(f"\n🎬 STARTING VIDEO {index+1}/{count}")
+    
+    # We need fresh instances per process
+    from video_generator import VideoGenerator
+    from audio_renderer import AudioRenderer
+    
+    video_gen = VideoGenerator()
+    audio_gen = AudioRenderer()
+    
+    timestamp = int(time.time())
+    temp_video = output_dir / f"temp_{timestamp}_{index}.mp4"
+    final_video = output_dir / f"marble_war_{timestamp}_{index}.mp4"
+    
+    try:
+        # A. Generate Video
+        events = video_gen.render(temp_video)
         
-        try:
-            # 1. Generate Video (Streaming)
-            print("▶️ Running generate_video.py...")
-            subprocess.run(["uv", "run", "generate_video.py"], cwd=script_dir, check=True)
+        if not temp_video.exists() or temp_video.stat().st_size == 0:
+            return f"❌ Video {index+1} failed."
             
-            # 2. Render Audio
-            print("▶️ Running render_audio.py...")
-            subprocess.run(["uv", "run", "render_audio.py"], cwd=script_dir, check=True)
+        # B. Render Audio & Mux
+        audio_gen.render(events, temp_video, final_video)
+        
+        # C. Cleanup
+        if temp_video.exists():
+            temp_video.unlink()
             
-            # 3. Move final output
-            final_video = script_dir / "final_with_audio.mp4"
-            
-            if final_video.exists():
-                timestamp = int(time.time())
-                target = batch_dir / f"marble_war_{timestamp}_{i}.mp4"
-                final_video.rename(target)
-                print(f"✅ Saved: {target.name}")
-                
-                # Register with Autopilot
-                if ShortsAutopilot:
-                    try:
-                        autopilot = ShortsAutopilot()
-                        autopilot.add_to_queue(video_path=str(target.absolute()))
-                        print(f"📡 Queued for upload!")
-                    except Exception as e:
-                        print(f"⚠️ Autopilot failed: {e}")
-                
-                # Cleanup
-                for tmp in ["output_render.mp4", "audio_events.json"]:
-                    tmp_path = script_dir / tmp
-                    if tmp_path.exists():
-                        tmp_path.unlink()
-            else:
-                print(f"❌ Error: {final_video} not found")
-                
-        except Exception as e:
-            print(f"❌ Failed video {i+1}: {e}")
+        return f"✨ SUCCESS: {final_video.name}"
+    except Exception as e:
+        return f"❌ Error in video {index+1}: {e}"
+
+def generate_batch(count):
+    print(f"🚀 Parallel Batch Pipeline: Marble War (Target: {count})")
+    print("==================================================")
+    
+    output_dir = project_root / "batch_output"
+    output_dir.mkdir(exist_ok=True)
+    
+    # Determine number of workers (max 2-3 given 8GB RAM constraint)
+    max_workers = 2
+    
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(process_single_video, i, count, output_dir) for i in range(count)]
+        
+        for future in concurrent.futures.as_completed(futures):
+            print(f"📡 {future.result()}")
 
 if __name__ == "__main__":
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 1

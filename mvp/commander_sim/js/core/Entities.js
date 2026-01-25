@@ -24,12 +24,12 @@ export class Building {
         if (this.type === 'BUNKER') this.defenseMultiplier = 2.0;
     }
 
-    update() {
+    update(globalIntensity = 1.0) {
         if (this.pulse > 0.01) this.pulse *= 0.9;
         
         if (this.team !== 'NEUTRAL' && this.count < CONFIG.BUILDING.MAX_COUNT) {
             this.frameCounter++;
-            const interval = CONFIG.SOLDIER.SPAWN_INTERVAL / this.spawnRateMultiplier;
+            const interval = CONFIG.SOLDIER.SPAWN_INTERVAL / (this.spawnRateMultiplier * globalIntensity);
             if (this.frameCounter >= interval) {
                 this.count++;
                 this.frameCounter = 0;

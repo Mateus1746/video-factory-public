@@ -2,153 +2,209 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const { execSync } = require('child_process');
+const bodyParser = require('body-parser');
 
+const PORT = 3000;
 const app = express();
+
 app.use(express.static(__dirname));
+app.use(bodyParser.json({ limit: '10mb' }));
 
-async function renderSimulation(file, type, port) {
-    const mapName = path.basename(file, path.extname(file));
-    const outputDir = path.join(__dirname, 'frames', mapName);
-    const finalPath = path.join(__dirname, `final_${mapName}.mp4`);
-    
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-    else {
-        fs.readdirSync(outputDir).forEach(f => fs.unlinkSync(path.join(outputDir, f)));
-    }
+// Global Browser and Status Instance
+let browser = null;
+let serverInstance = null;
+let renderStatus = {
+    frameCount: 0,
+    isRendering: false,
+    currentMap: ""
+};
 
-    console.log(`🎥 [FINAL] Iniciando Renderização de Alta Qualidade (1080p 60fps): ${file}`);
-    console.log(`ℹ️  Isso pode demorar, pois estamos capturando cada frame individualmente.`);
-    
-    // Use Puppeteer's bundled Chromium by default
-    console.log(`Using bundled Chromium...`);
-
-    const browser = await puppeteer.launch({
+async function initBrowser() {
+    if (browser) return browser;
+    console.log("🚀 Launching Persistent Browser...");
+    browser = await puppeteer.launch({
         headless: "new",
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
+    return browser;
+}
+
+async function renderMap(task) {
+    if (!browser) await initBrowser();
+
+    const { mapFile, type, outputDir, config } = task;
+    const mapName = path.basename(mapFile, path.extname(mapFile));
+    const targetDir = path.join(outputDir || __dirname, 'frames', mapName);
     
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1080, height: 1920 });
+    renderStatus.isRendering = true;
+    renderStatus.frameCount = 0;
+    renderStatus.currentMap = mapName;
 
-    page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
-    page.on('pageerror', err => console.error('BROWSER ERROR:', err.message));
-    page.on('requestfailed', request => console.error('BROWSER REQUEST FAILED:', request.url(), request.failure().errorText));
+    // Config Defaults
+    const width = config?.width || 1080;
+    const height = config?.height || 1920;
+    const fps = config?.fps || 60;
+    const quality = config?.quality || 90; 
+    const maxFrames = config?.maxFrames || (60 * fps); 
 
-    let url;
-    if (type === 'JSON') {
-        url = `http://localhost:${port}/index.html?map=${file}`;
+    // Clean/Create directory
+    if (fs.existsSync(targetDir)) {
+        fs.readdirSync(targetDir).forEach(f => fs.unlinkSync(path.join(targetDir, f)));
     } else {
-        url = `http://localhost:${port}/html_maps/${file}`;
+        fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    console.log(`Abrindo URL: ${url}`);
-    await page.goto(url, { waitUntil: 'networkidle0' });
+    const page = await browser.newPage();
+    try {
+        await page.setViewport({ width, height });
 
-    await page.evaluate(() => {
-        window.MANUAL_STEPPING = true;
-        document.body.classList.add('rendering'); // Remove escalas de UI
-    });
-
-    // Esperar pelo sinal de pronto
-    console.log("Aguardando inicialização do motor e dados do mapa...");
-    let isReady = false;
-    for (let i = 0; i < 60; i++) {
-        const state = await page.evaluate(() => {
-            const g = window.gameInstance;
-            return {
-                exists: !!g,
-                ready: g ? g.isReady : false,
-                buildings: g ? g.buildings.length : 0
-            };
-        });
-        
-        if (state.exists && state.ready && state.buildings > 0) {
-            isReady = true;
-            break;
-        }
-        
-        if (i % 10 === 0) console.log(`⏳ Aguardando... (Game: ${state.exists}, Ready: ${state.ready}, Buildings: ${state.buildings})`);
-        await new Promise(r => setTimeout(r, 500));
-    }
-
-    if (!isReady) {
-        console.error("❌ Erro: Motor não inicializou a tempo.");
-        await browser.close();
-        process.exit(1); // Force failure
-    }
-
-    let frameCount = 0;
-    let finished = false;
-    const audioEvents = []; // [NEW] Accumulator for audio events
-    
-    console.log("Processando frames...");
-
-    while (!finished && frameCount < 1800) { 
-        const result = await page.evaluate(async () => {
-            if (!window.gameInstance || !window.gameInstance.isReady) return { ready: false };
-            
-            // 1 passo de lógica por frame de vídeo (Tempo Real)
-            if (window.nextFrame) window.nextFrame();
-
-            // [NEW] Capture events
-            const events = window.gameInstance.simulation.events || [];
-
-            return {
-                ready: true,
-                victory: window.gameInstance.victory !== null,
-                finished: window.gameInstance.simulation.finished || false,
-                buildings: window.gameInstance.buildings.length,
-                soldiers: window.gameInstance.soldiers.length,
-                events: events.map(e => ({ type: e.type })) // [NEW] Send events to Node context
-            };
-        });
-
-        if (!result.ready) {
-            await new Promise(r => setTimeout(r, 100));
-            continue;
+        const serverPort = serverInstance.address().port;
+        let url;
+        if (type === 'JSON') {
+            url = `http://localhost:${serverPort}/index.html?map=${mapFile}`;
+        } else {
+            url = `http://localhost:${serverPort}/html_maps/${mapFile}`;
         }
 
-        // [NEW] Store events
-        if (result.events && result.events.length > 0) {
-            result.events.forEach(e => {
-                audioEvents.push({ type: e.type, frame: frameCount });
+        await page.evaluateOnNewDocument((cfg) => {
+            window.GAME_CONFIG = {
+                SCREEN_WIDTH: cfg.width,
+                SCREEN_HEIGHT: cfg.height,
+                FPS: cfg.fps,
+                THEME: cfg.THEME,
+                NAMES: cfg.NAMES
+            };
+            window.MANUAL_STEPPING = true; 
+        }, { width, height, fps, THEME: config.THEME, NAMES: config.NAMES });
+
+        await page.goto(url, { waitUntil: 'networkidle0' });
+
+        await page.evaluate(() => {
+            document.body.classList.add('rendering');
+        });
+
+        // Wait for Ready
+        let isReady = false;
+        for (let i = 0; i < 100; i++) {
+            const state = await page.evaluate(() => {
+                const g = window.gameInstance;
+                return { exists: !!g, ready: g ? g.isReady : false };
             });
-        }
-
-        const fileName = `frame_${frameCount.toString().padStart(5, '0')}.png`;
-        await page.screenshot({ path: path.join(outputDir, fileName), type: 'png' });
-
-        finished = result.finished;
-
-        frameCount++;
-        if (frameCount % 100 === 0) console.log(`Frame: ${frameCount} | Tropas em campo: ${result.soldiers}`);
-    }
-
-    await browser.close();
-
-    // [NEW] Save events.json
-    console.log(`✅ Frames capturados (${frameCount}). Salvando eventos de áudio...`);
-    fs.writeFileSync(path.join(outputDir, 'events.json'), JSON.stringify(audioEvents, null, 2));
-
-    console.log(`✅ Renderização de frames concluída para: ${mapName}`);
-    // FFmpeg compilation is now handled by the batch python script.
-}
-
-async function main() {
-    const server = app.listen(0, async () => {
-        const port = server.address().port;
-        const targetMap = process.argv[2] || 'map1.html';
-        try {
-            if (targetMap.endsWith('.json')) {
-                await renderSimulation(targetMap, 'JSON', port);
-            } else {
-                await renderSimulation(targetMap, 'HTML', port);
+            if (state.exists && state.ready) {
+                isReady = true;
+                break;
             }
-        } finally {
-            server.close();
+            await new Promise(r => setTimeout(r, 100));
         }
-    });
+
+        if (!isReady) throw new Error("Game Engine timed out");
+
+        // Render Loop
+        let frameCount = 0;
+        let finished = false;
+        const audioEvents = [];
+        
+        // Thumbnail Logic
+        let bestActionScore = -1;
+        let bestFrameNumber = 0;
+
+        while (!finished && frameCount < maxFrames) {
+            const result = await page.evaluate(() => {
+                if (!window.nextFrame) return { ready: false };
+                window.nextFrame(); 
+                
+                const events = window.gameInstance.simulation.events || [];
+                // Score based on dynamic elements
+                const soldiersCount = window.gameInstance.simulation.soldiers.length;
+                const particlesCount = window.gameInstance.renderer.particles.particles.length;
+                const actionScore = soldiersCount + (particlesCount * 0.5);
+
+                return {
+                    ready: true,
+                    finished: window.gameInstance.simulation.finished || false,
+                    events: events.map(e => ({ type: e.type })),
+                    actionScore: actionScore
+                };
+            });
+
+            if (!result.ready) continue;
+
+            // Track Best Action Frame
+            if (result.actionScore > bestActionScore) {
+                bestActionScore = result.actionScore;
+                bestFrameNumber = frameCount;
+            }
+
+            const fileName = `frame_${frameCount.toString().padStart(5, '0')}.jpg`;
+            const framePath = path.join(targetDir, fileName);
+            await page.screenshot({ 
+                path: framePath, 
+                type: 'jpeg', 
+                quality: quality 
+            });
+
+            if (result.events) {
+                result.events.forEach(e => audioEvents.push({ type: e.type, frame: frameCount }));
+            }
+
+            finished = result.finished;
+            frameCount++;
+            renderStatus.frameCount = frameCount; 
+        }
+
+        // Save Thumbnail
+        const bestFrameName = `frame_${bestFrameNumber.toString().padStart(5, '0')}.jpg`;
+        const bestFramePath = path.join(targetDir, bestFrameName);
+        const thumbPath = path.join(targetDir, 'thumbnail.jpg');
+        if (fs.existsSync(bestFramePath)) {
+            fs.copyFileSync(bestFramePath, thumbPath);
+            console.log(`📸 Action Shot saved! Frame: ${bestFrameNumber} (Score: ${bestActionScore.toFixed(1)})`);
+        }
+
+        fs.writeFileSync(path.join(targetDir, 'events.json'), JSON.stringify(audioEvents, null, 2));
+        
+        return { success: true, frames: frameCount, outputDir: targetDir };
+
+    } catch (e) {
+        console.error("Render Error:", e);
+        return { success: false, error: e.message };
+    } finally {
+        renderStatus.isRendering = false;
+        await page.close();
+    }
 }
 
-main();
+// API Routes
+app.post('/render', async (req, res) => {
+    const { mapFile, type, outputDir, config } = req.body;
+    if (!mapFile) return res.status(400).json({ error: "Missing mapFile" });
+
+    const result = await renderMap({ mapFile, type, outputDir, config });
+    
+    if (result.success) res.json(result);
+    else res.status(500).json(result);
+});
+
+app.get('/progress', (req, res) => {
+    res.json(renderStatus);
+});
+
+app.get('/health', (req, res) => res.send('OK'));
+
+app.post('/shutdown', async (req, res) => {
+    console.log("🛑 Shutdown requested via API");
+    res.send('Shutting down...');
+    if (browser) await browser.close();
+    process.exit(0);
+});
+
+serverInstance = app.listen(PORT, async () => {
+    console.log(`🌍 Render Server listening on port ${PORT}`);
+    await initBrowser();
+    console.log("✨ Browser Ready. Waiting for jobs...");
+});
+
+process.on('SIGTERM', async () => {
+    if (browser) await browser.close();
+    process.exit(0);
+});

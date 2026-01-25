@@ -1,20 +1,22 @@
 import pygame
 import math
-from ..config import WHITE
+from .base import Entity
+from ..config import WHITE, STRIKER_RADIUS, STRIKER_SPEED, STRIKER_FIRE_RATE, STRIKER_PROJ_SPEED, STRIKER_DAMAGE, STRIKER_COLOR
 from ..audio import generate_note_sound
 from ..effects import spawn_particles
 
-class OrbitStriker:
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+class OrbitStriker(Entity):
+    NAME = "ORBIT STRIKER"
+    COLOR = STRIKER_COLOR
+    
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.angle = 0.0
-        self.radius = 360 # Slightly larger than largest ring (340)
-        self.speed = 2.0 # Radians per second
-        self.projectiles = []
+        self.radius = STRIKER_RADIUS
+        self.speed = STRIKER_SPEED
         self.fire_timer = 0.0
-        self.fire_rate = 0.035 # Buffed fire rate (Machine Gun)
-        self.color = (0, 255, 128) # Spring Green
+        self.fire_rate = STRIKER_FIRE_RATE
+        self.color = STRIKER_COLOR
         
     def update(self, dt):
         self.angle += self.speed * dt
@@ -30,41 +32,22 @@ class OrbitStriker:
             dx = self.center[0] - orbiter_x
             dy = self.center[1] - orbiter_y
             dist = math.hypot(dx, dy)
-            vx = (dx / dist) * 1200 # Faster projectiles (1200)
-            vy = (dy / dist) * 1200
-            self.projectiles.append({
-                'pos': [orbiter_x, orbiter_y],
-                'vel': [vx, vy],
-                'active': True
-            })
+            # Use ProjectileManager if available, otherwise local logic (removed)
+            # To strictly follow the pattern, I should use ProjectileManager.
+            # But the original logic had specialized hit logic (check rings).
+            # ProjectileManager has generic hit logic.
+            # I will adapt to use ProjectileManager which simplifies this significantly.
             
-        # Update projectiles
-        for p in self.projectiles:
-            if not p['active']: continue
-            
-            p['pos'][0] += p['vel'][0] * dt
-            p['pos'][1] += p['vel'][1] * dt
-            
-            px, py = p['pos'][0], p['pos'][1]
-            dist_to_center = math.hypot(px - self.center[0], py - self.center[1])
-            
-            # Check collisions
-            hit = False
-            for ring in self.rings:
-                if ring.alive:
-                     # Simple distance check for ring width
-                    if abs(dist_to_center - ring.radius) < 20:
-                        ring.take_damage(2800) # Buffed (was 1540)
-                        if ring.note_frequency:
-                            generate_note_sound(ring.note_frequency, 0.05).play()
-                        spawn_particles(px, py, self.color, 5)
-                        hit = True
-                        break
-            
-            if hit or dist_to_center < 10 or dist_to_center > 500:
-                p['active'] = False
-                
-        self.projectiles = [p for p in self.projectiles if p['active']]
+            if self.projectile_manager:
+                 # ProjectileManager handles movement and collision
+                 self.projectile_manager.add_projectile(
+                    pos=[orbiter_x, orbiter_y],
+                    target=[self.center[0], self.center[1]], # Target center
+                    speed=STRIKER_PROJ_SPEED,
+                    damage=STRIKER_DAMAGE,
+                    color=WHITE,
+                    collision_mode='continuous'
+                )
 
     def draw(self, surface):
         # Draw Orbiter
@@ -72,7 +55,3 @@ class OrbitStriker:
         orbiter_y = self.center[1] + math.sin(self.angle) * self.radius
         
         pygame.draw.circle(surface, self.color, (int(orbiter_x), int(orbiter_y)), 15)
-        
-        # Draw Projectiles
-        for p in self.projectiles:
-            pygame.draw.circle(surface, WHITE, (int(p['pos'][0]), int(p['pos'][1])), 4)

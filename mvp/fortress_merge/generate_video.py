@@ -74,18 +74,17 @@ class FFMPEGRecorder:
         if self.process.stdin:
             self.process.stdin.close()
         self.process.wait()
-        print("🎉 Vídeo Salvo: output_render.mp4")
 
 # 4. Execução
 if __name__ == "__main__":
+    output_filename = sys.argv[1] if len(sys.argv) > 1 else "output_render.mp4"
     game = Game()
     
     # Injeção de Dependência: Troca o gravador padrão pelo nosso FFMPEGRecorder
-    # Paramos o gravador antigo se ele tiver iniciado
     if hasattr(game.recorder, 'stop'):
         game.recorder.stop()
         
-    game.recorder = FFMPEGRecorder()
+    game.recorder = FFMPEGRecorder(output_filename)
     
     # Sobrescreve a lógica de loop para garantir limite de tempo
     # Em vez de chamar game.run(), vamos fazer o loop manual para ter controle total

@@ -15,6 +15,7 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 # Now import game (modular version)
 from game import MarbleWar
 import config
+import pygame
 
 def main():
     print("🎬 Marble War: Streaming HD Generator")
@@ -39,47 +40,37 @@ def main():
     process = subprocess.Popen(command, stdin=subprocess.PIPE)
     
     # Create game instance
-    game = MarbleWar()
+    game = MarbleWar(headless=True)
     
     print(f"⚔️ Simulating battle...")
-    frame_count = 0
     max_frames = config.TOTAL_FRAMES
     
     # Main render loop
-    while frame_count < max_frames and not game.winner_team:
-        # Update game
-        game._update_marbles()
-        game._handle_powerups()
-        game._update_projectiles()
-        game._update_bomb()
-        game._remove_entities()
-        game._update_grid()
-        game._check_victory()
+    running = True
+    while running and game.frame_count < max_frames:
+        # Step logic (returns False if game ends)
+        running = game.step()
         
-        # Update physics
-        game.space.step(config.TIMESTEP)
-        
-        # Update effects
-        game.particles.update()
-        for exp in game.explosions[:]:
-            if not exp.update():
-                game.explosions.remove(exp)
-        
-        # Render frame
+        # Render frame (to internal surface)
         game._draw()
         
         # Capture frame
-        import pygame
         frame_data = pygame.image.tostring(game.screen, 'RGB')
-        process.stdin.write(frame_data)
+        try:
+            process.stdin.write(frame_data)
+        except BrokenPipeError:
+            print("❌ FFmpeg pipe broken!")
+            break
         
-        frame_count += 1
-        game.frame_count = frame_count
-        
-        if frame_count % 120 == 0:
-            print(f"Frame {frame_count}/{max_frames} | Teams alive: {len(set(m.team for m in game.marbles))}")
+        if game.frame_count % 120 == 0:
+            print(f"Frame {game.frame_count}/{max_frames} | Teams alive: {len(set(m.team for m in game.marbles))}")
     
     # Save audio events
+    # The game class now has a helper for this, but it saves to 'audio_log.json' by default in original code
+    # We want 'audio_events.json' as per this script's convention.
+    # game._save_audio_log() saves to "audio_log.json" in the original code.
+    # Let's override or just manually save to ensure filename match.
+    
     audio_data = [{"t": e.t, "name": e.name, "vol": e.vol} for e in game.audio_events]
     with open(audio_log, 'w') as f:
         json.dump(audio_data, f, indent=2)

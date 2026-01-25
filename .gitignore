@@ -41,3 +41,21 @@ trigger_all.txt
 .vscode/
 .idea/
 .DS_Store
+
+# Generated Output Directories and Files
+DEBUG_AND_FIXES_LOG.md
+mvp/commander_sim/batch_output/
+mvp/commander_sim/frames/
+mvp/fortress_merge/ready_to_upload/
+mvp/fortress_merge/failed_uploads/
+mvp/marble war/batch_output/
+mvp/marble war/temp_video.mp4
+mvp/the_arena_of_algoritms/output_render.mp4
+mvp/velocity_odds/final_output.mp4
+scripts/postponed_uploads/
+scripts/downloaded_videos/
+
+# Generic Generated Media (caution with assets)
+*.mp4
+*.avi
+*.mov

@@ -3,17 +3,27 @@
 WIDTH, HEIGHT = 1080, 1920
 FPS = 60
 TIMESTEP = 1.0 / FPS
-TOTAL_FRAMES = 99999 # Nexus: Modo Batalha Total  # 15 segundos para teste rápido
+TOTAL_FRAMES = 4800 # 80 segundos limite. A Morte Súbita garante o fim antes disso.
 GRID_SIZE = 40 
 
 # Configurações de Física
 GRAVITY = (0, 0)
-DAMPING = 0.85 
+SPACE_DAMPING = 1.0 # 1.0 = Sem resistência do ar (Vácuo). Bolinhas não param.
 MARBLE_RADIUS = 35
-MARBLE_ELASTICITY = 0.95
-MARBLE_FRICTION = 0.1
-WALL_ELASTICITY = 0.9
-WALL_FRICTION = 0.2
+MARBLE_ELASTICITY = 0.95 # Muito elástico (quase 1.0)
+MARBLE_FRICTION = 0.0 # Sem atrito
+WALL_ELASTICITY = 1.0 # Paredes perfeitamente elásticas
+WALL_FRICTION = 0.0
+WALL_THICKNESS = 100
+
+# Collision types
+COLLISION_MARBLE = 1
+COLLISION_PROJECTILE = 2
+COLLISION_WALL = 3
+
+# Audio thresholds
+IMPULSE_THRESHOLD = 50
+IMPULSE_TO_VOLUME = 2000.0
 
 # Configurações de Arena e UI
 PLAY_WIDTH = WIDTH
@@ -43,7 +53,7 @@ TEAM_COLORS = {
 # Configurações de Power-Ups
 POWERUP_SPAWN_INTERVAL = 5.0 # Segundos
 POWERUP_RADIUS = 40
-POWERUP_TYPES = ["speed", "size", "clone", "assassin"]
+POWERUP_TYPES = ["speed", "size", "clone", "assassin", "magnet", "freeze"]
 POWERUP_DURATION = 5.0
 SPEED_MULTIPLIER = 1.6 # Diminuído conforme pedido (antes era 2.5)
 BRUSH_MULTIPLIER = 3
@@ -60,7 +70,22 @@ BOMB_START_FRAME = 20 * FPS
 BOMB_DURATION = 5.0
 BOMB_TIMER_SIZE = 60
 
-# Configurações de Visual (Glow/Brush)
+# Configurações Visual (Glow/Brush)
 BRUSH_SIZE = 180 
 BRUSH_ALPHA = 12  
 MARBLE_GLOW_SIZE = 80 
+
+# Configurações de Caos e Eventos
+CHAOS_START_FRAME = 15 * FPS # Começa após 15s
+ZONE_SHRINK_SPEED = 0.3 # Mais lento para dar tempo de brigar
+ZONE_MIN_RADIUS = 300 # Espaço mínimo para não "esmagar" a física (aprox 20% da tela)
+ZONE_BOUNCE_FACTOR = 1.2 # Força do "rebote" na borda do círculo (1.0 = elástico perfeito)
+
+# Centralized Audio Paths
+AUDIO_PATHS = {
+    "collision": "assets/music/collision_48.wav",
+    "powerup": "assets/music/powerup_48.wav",
+    "elimination": "assets/music/elimination_48.wav",
+    "tictoc": "assets/music/tictoc_48.wav",
+    "bg": "assets/music/bg_48.wav"
+} 

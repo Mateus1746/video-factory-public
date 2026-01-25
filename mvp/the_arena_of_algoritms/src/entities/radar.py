@@ -1,16 +1,20 @@
 import pygame
 import math
 import random
+from .base import Entity
+from ..config import WHITE
 from ..audio import generate_note_sound
 from ..effects import spawn_particles
 
-class RadarSweep:
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+class RadarSweep(Entity):
+    NAME = "RADAR SWEEP"
+    COLOR = (255, 50, 50)
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.angle = 0.0
         self.speed = 5.0 
-        self.color = (255, 50, 50) 
+        self.color = self.COLOR 
         self.max_radius = 150 # Local scan
         self.projectiles = []
         self.scan_cooldown = 0.0

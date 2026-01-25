@@ -1,4 +1,3 @@
-import pygame
 import math
 import random
 from config import *
@@ -14,47 +13,27 @@ class PowerUp:
         # Animation float
         self.anim_offset = random.uniform(0, 6.28)
         
-        # Set visuals
+        # Metadata for Renderer
         if self.type == 'INVERT':
-            self.color = COLOR_EVENT_INVERT
             self.symbol = "I"
+            self.color_key = "COLOR_EVENT_INVERT"
         elif self.type == 'MOON':
-            self.color = COLOR_EVENT_MOON
             self.symbol = "M"
+            self.color_key = "COLOR_EVENT_MOON"
         elif self.type == 'TURBO':
-            self.color = COLOR_EVENT_TURBO
             self.symbol = "T"
+            self.color_key = "COLOR_EVENT_TURBO"
         else: # GLITCH
-            self.color = COLOR_EVENT_GLITCH
             self.symbol = "?"
+            self.color_key = "COLOR_EVENT_GLITCH"
 
     def check_collision(self, ball_x, ball_y, ball_radius):
         if not self.active: return False
         
-        # Distance check
-        dist = math.hypot(self.x - ball_x, self.y - ball_y)
-        return dist < (self.radius + ball_radius)
+        # Squared Distance check (Optimization: no math.hypot)
+        dx = self.x - ball_x
+        dy = self.y - ball_y
+        dist_sq = dx*dx + dy*dy
+        rad_sum = self.radius + ball_radius
+        return dist_sq < (rad_sum * rad_sum)
 
-    def draw(self, surface, font):
-        if not self.active: return
-        
-        # Bobbing animation
-        t = pygame.time.get_ticks() / 300.0
-        offset_y = math.sin(t + self.anim_offset) * 3
-        
-        draw_x = int(self.x)
-        draw_y = int(self.y + offset_y)
-        
-        # Draw Glow
-        # pygame.draw.circle(surface, (self.color[0]//3, self.color[1]//3, self.color[2]//3), (draw_x, draw_y), self.radius + 4)
-        
-        # Draw Main Orb
-        pygame.draw.circle(surface, self.color, (draw_x, draw_y), self.radius)
-        
-        # Draw Symbol
-        txt = font.render(self.symbol, True, (0,0,0))
-        rect = txt.get_rect(center=(draw_x, draw_y))
-        surface.blit(txt, rect)
-        
-        # Draw Border
-        pygame.draw.circle(surface, WHITE, (draw_x, draw_y), self.radius, 1)

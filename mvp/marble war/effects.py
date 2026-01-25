@@ -26,6 +26,8 @@ class PowerUp:
         "size": (200, 0, 255),
         "clone": (0, 255, 200),
         "assassin": (255, 0, 0),
+        "magnet": (148, 0, 211), # Roxo Escuro
+        "freeze": (0, 255, 255), # Ciano
     }
     
     def __init__(self, x: float, y: float, type: str) -> None:
@@ -45,7 +47,7 @@ class PowerUp:
         pygame.draw.circle(screen, self.color, center, int(r_pulse), 2)
         
         # Draw icon or fallback
-        if self.type in images:
+        if self.type in images and images[self.type]:
             img = images[self.type]
             screen.blit(img, (center[0] - self.radius, center[1] - self.radius))
         else:
@@ -73,7 +75,54 @@ class PowerUp:
         elif self.type == "size":
             pygame.draw.rect(screen, self.color, (cx - 12, cy - 15, 24, 15))
             pygame.draw.rect(screen, (150, 75, 0), (cx - 5, cy, 10, 20))
+        elif self.type == "magnet":
+            # U shape
+            pygame.draw.arc(screen, self.color, (cx-15, cy-15, 30, 30), 0, 3.14, 5)
+            pygame.draw.line(screen, self.color, (cx-15, cy), (cx-15, cy-10), 5)
+            pygame.draw.line(screen, self.color, (cx+15, cy), (cx+15, cy-10), 5)
+        elif self.type == "freeze":
+            # Snowflake-ish
+            pygame.draw.line(screen, self.color, (cx-15, cy), (cx+15, cy), 3)
+            pygame.draw.line(screen, self.color, (cx, cy-15), (cx, cy+15), 3)
+            pygame.draw.line(screen, self.color, (cx-10, cy-10), (cx+10, cy+10), 3)
+            pygame.draw.line(screen, self.color, (cx+10, cy-10), (cx-10, cy+10), 3)
 
+
+class FloatingText:
+    """Animated text that floats up and fades out."""
+    
+    def __init__(self, x: float, y: float, text: str, color: Color, size: int = 40) -> None:
+        self.pos = pygame.Vector2(x, y)
+        self.vel = pygame.Vector2(0, -2) # Float up
+        self.text = text
+        self.color = color
+        self.life = 1.0
+        self.font = pygame.font.SysFont("Arial", size, bold=True)
+        
+    def update(self) -> bool:
+        self.pos += self.vel
+        self.life -= config.TIMESTEP
+        return self.life > 0
+
+    def draw(self, screen: pygame.Surface) -> None:
+        if self.life <= 0: return
+        
+        alpha = int(max(0, self.life * 255))
+        # Render text with outline
+        txt_surf = self.font.render(self.text, True, self.color)
+        outline_surf = self.font.render(self.text, True, (0, 0, 0))
+        
+        # Apply alpha (requires blit to temp surface for text usually, but simple fade is ok)
+        txt_surf.set_alpha(alpha)
+        outline_surf.set_alpha(alpha)
+        
+        rect = txt_surf.get_rect(center=(int(self.pos.x), int(self.pos.y)))
+        
+        # Draw outline
+        for dx, dy in [(-2,0), (2,0), (0,-2), (0,2)]:
+            screen.blit(outline_surf, (rect.x + dx, rect.y + dy))
+            
+        screen.blit(txt_surf, rect)
 
 # ============================================================================
 # EXPLOSIONS
@@ -97,11 +146,13 @@ class Explosion:
         return self.life > 0
 
     def draw(self, screen: pygame.Surface) -> None:
-        """Draw fading explosion."""
+        """Draw fading explosion with ADDITIVE BLEND for glow."""
         img_copy = self.image.copy()
         img_copy.fill((255, 255, 255, self.alpha), special_flags=pygame.BLEND_RGBA_MULT)
         rect = img_copy.get_rect(center=(int(self.pos.x), int(self.pos.y)))
-        screen.blit(img_copy, rect)
+        
+        # Additive blend makes it look like light
+        screen.blit(img_copy, rect, special_flags=pygame.BLEND_ADD) 
 
 
 # ============================================================================
@@ -109,21 +160,20 @@ class Explosion:
 # ============================================================================
 
 class ParticleSystem:
-    """Optimized particle system with object pooling."""
+    """Optimized particle system with object pooling and GLOW."""
     
     PARTICLE_COUNT = 8
-    PARTICLE_SPEED_MIN = 2
-    PARTICLE_SPEED_MAX = 6
-    FADE_RATE = 0.05
-    PARTICLE_SIZE = 4
+    PARTICLE_SPEED_MIN = 3
+    PARTICLE_SPEED_MAX = 8
+    FADE_RATE = 0.04
+    PARTICLE_SIZE = 6
     
     def __init__(self) -> None:
         self.particles: List[Particle] = []
-        # Pre-create surface for particles (reusable)
-        self._particle_surface = pygame.Surface(
-            (self.PARTICLE_SIZE, self.PARTICLE_SIZE), 
-            pygame.SRCALPHA
-        )
+        # Pre-create glow surface
+        self._glow_surf = pygame.Surface((20, 20), pygame.SRCALPHA)
+        pygame.draw.circle(self._glow_surf, (255, 255, 255, 50), (10, 10), 10)
+        pygame.draw.circle(self._glow_surf, (255, 255, 255, 200), (10, 10), 4)
 
     def emit(self, pos: Tuple[float, float], color: Color) -> None:
         """Emit particle burst."""
@@ -141,24 +191,21 @@ class ParticleSystem:
         """Update all particles (vectorized removal)."""
         for p in self.particles:
             p.pos += p.vel
+            p.vel *= 0.95 # Drag
             p.life -= self.FADE_RATE
         
         # Remove dead particles in one pass
         self.particles = [p for p in self.particles if p.life > 0]
 
     def draw(self, screen: pygame.Surface) -> None:
-        """Draw all particles efficiently."""
+        """Draw all particles efficiently with Additive Blend."""
         for p in self.particles:
             alpha = int(p.life * 255)
-            self._particle_surface.fill((0, 0, 0, 0))  # Clear
-            pygame.draw.circle(
-                self._particle_surface, 
-                (*p.color[:3], alpha), 
-                (self.PARTICLE_SIZE // 2, self.PARTICLE_SIZE // 2), 
-                self.PARTICLE_SIZE // 2
-            )
-            screen.blit(
-                self._particle_surface, 
-                (int(p.pos.x - self.PARTICLE_SIZE // 2), 
-                 int(p.pos.y - self.PARTICLE_SIZE // 2))
-            )
+            
+            # Tint the glow surface
+            tinted_glow = self._glow_surf.copy()
+            tinted_glow.fill((*p.color[:3], 255), special_flags=pygame.BLEND_RGBA_MULT)
+            tinted_glow.set_alpha(alpha)
+            
+            dest = (int(p.pos.x - 10), int(p.pos.y - 10))
+            screen.blit(tinted_glow, dest, special_flags=pygame.BLEND_ADD)

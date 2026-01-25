@@ -1,182 +1,117 @@
 import os
 import sys
 import json
-import random
 import time
-import subprocess
-import shutil
+import random
 import datetime
-import glob
+import shutil
+import config
+from pipeline.server import RenderServer
+from pipeline.ffmpeg_utils import compile_video, mix_audio
 
-# Configuration
+# Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BATCH_OUTPUT_DIR = os.path.join(BASE_DIR, "batch_output")
 FRAMES_BASE_DIR = os.path.join(BASE_DIR, "frames")
-HISTORY_FILE = os.path.join(BASE_DIR, "batch_history.json")
-MAPS_DIR = os.path.join(BASE_DIR, "maps")
-HTML_MAPS_DIR = os.path.join(BASE_DIR, "html_maps")
-RENDER_SCRIPT = os.path.join(BASE_DIR, "render_frames.js")
-MIX_SCRIPT = os.path.join(BASE_DIR, "mix_sfx.py")
+RENDER_SERVER_SCRIPT = os.path.join(BASE_DIR, "render_frames.js")
+
+# Content Constants
+THEMES = ["NEON", "MAGMA", "MATRIX", "FROST"]
+PREFIXES = ["Cyber", "Iron", "Neon", "Shadow", "Solar", "Void", "Quantum", "Apex", "Crimson", "Azure"]
+SUFFIXES = ["Legion", "Rebels", "Empire", "Corp", "Dynasty", "Horde", "Vanguard", "Sect", "Dominion", "Front"]
 
 def ensure_dirs():
-    if not os.path.exists(BATCH_OUTPUT_DIR):
-        os.makedirs(BATCH_OUTPUT_DIR)
-    if not os.path.exists(FRAMES_BASE_DIR):
-        os.makedirs(FRAMES_BASE_DIR)
+    if not os.path.exists(BATCH_OUTPUT_DIR): os.makedirs(BATCH_OUTPUT_DIR)
+    if not os.path.exists(FRAMES_BASE_DIR): os.makedirs(FRAMES_BASE_DIR)
 
-def load_history():
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            return {}
-    return {}
-
-def save_history(history):
-    with open(HISTORY_FILE, 'w') as f:
-        json.dump(history, f, indent=2)
-
-def get_available_maps():
-    maps = []
-    # JSON maps in maps/
-    if os.path.exists(MAPS_DIR):
-        for f in os.listdir(MAPS_DIR):
-            if f.endswith(".json"):
-                maps.append(f)
-    
-    # HTML maps in html_maps/
-    if os.path.exists(HTML_MAPS_DIR):
-        for f in os.listdir(HTML_MAPS_DIR):
-            if f.endswith(".html") and f != "index.html": # Avoid utility htmls if any
-                maps.append(f)
-    
-    return maps
-
-def select_next_map(history, last_map):
-    maps = get_available_maps()
-    if not maps:
-        print("❌ No maps found!")
-        sys.exit(1)
-
-    # Initialize history for new maps
-    for m in maps:
-        if m not in history:
-            history[m] = 0
-
-    # Filter out the very last map to avoid immediate repetition (if we have > 1 map)
-    candidates = [m for m in maps if m != last_map]
-    if not candidates:
-        candidates = maps
-
-    # Weighted random based on usage (fewer uses = higher weight)
-    # Weight = 1 / (usage + 1)
-    weights = [1.0 / (history[m] + 1) for m in candidates]
-    
-    chosen_map = random.choices(candidates, weights=weights, k=1)[0]
-    return chosen_map
-
-def run_step(step_name, command):
-    print(f"🔹 [{step_name}] Running: {' '.join(command)}")
-    try:
-        subprocess.run(command, check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"❌ [{step_name}] Failed: {e}")
-        return False
+def generate_names():
+    n1 = f"{random.choice(PREFIXES)} {random.choice(SUFFIXES)}"
+    n2 = f"{random.choice(PREFIXES)} {random.choice(SUFFIXES)}"
+    while n1 == n2: n2 = f"{random.choice(PREFIXES)} {random.choice(SUFFIXES)}"
+    return {"player": n1, "enemy": n2}
 
 def main():
     if 'BASE_DIR' in globals(): os.chdir(BASE_DIR)
     ensure_dirs()
-    history = load_history()
-    last_map = None
-
-    # Parse arguments
-    limit = None
-    if len(sys.argv) > 1:
-        try:
-            limit = int(sys.argv[1])
-        except ValueError:
-            pass # Ignore if not a number
-
-    print("🚀 Starting Batch Generation Protocol...")
-    print(f"📂 Output: {os.path.abspath(BATCH_OUTPUT_DIR)}")
     
-    if limit:
-        print(f"🎯 Goal: Generate {limit} simulations")
-    else:
-        print(f"∞ Mode: Generating indefinitely (Ctrl+C to stop)")
+    server = RenderServer(RENDER_SERVER_SCRIPT, BASE_DIR)
+    if not server.start():
+        sys.exit(1)
 
-    count = 0
-    while limit is None or count < limit:
-        count += 1
-        if limit:
-            print(f"\n🎬 Simulation {count}/{limit}")
+    try:
+        limit = int(sys.argv[1]) if len(sys.argv) > 1 else None
+        print(f"🚀 Batch Protocol Started. FPS: {config.FPS}")
         
-        current_map = select_next_map(history, last_map)
-        print(f"\n🎯 Selected Map: {current_map} (Used: {history.get(current_map, 0)} times)")
-        
-        # 1. Generate Frames & Events
-        # Node script expects just the filename
-        if not run_step("Render Frames", ["node", RENDER_SCRIPT, current_map]):
-            time.sleep(5)
-            continue
+        count = 0
+        while limit is None or count < limit:
+            count += 1
+            if limit: print(f"\n🎬 Simulation {count}/{limit}")
+            
+            # Content Selection
+            theme = random.choice(THEMES)
+            names = generate_names()
+            print(f"\n🎯 Map: PROCEDURAL | Theme: {theme} | Match: {names['player']} vs {names['enemy']}")
+            
+            # 1. Render
+            render_start = time.time()
+            result = server.request_render("GENERATE", theme, names)
+            
+            if not result.get("success"):
+                print("❌ Rendering failed. Skipping...")
+                time.sleep(2)
+                continue
+            
+            render_time = time.time() - render_start
+            print(f"✅ Rendered {result.get('frames')} frames in {render_time:.1f}s")
 
-        # Determine paths
-        map_basename = os.path.splitext(current_map)[0]
-        # render_frames.js creates a folder with the map basename
-        # Caution: If input is 'maps/level1.json', render_frames logic does `path.basename`.
-        # So 'level1.json' -> 'level1'. 'html_maps/duel.html' -> 'duel'.
-        frame_dir_name = os.path.splitext(os.path.basename(current_map))[0]
-        frames_path = os.path.join(FRAMES_BASE_DIR, frame_dir_name)
-        events_path = os.path.join(frames_path, "events.json")
+            # Paths
+            frames_path = os.path.join(FRAMES_BASE_DIR, "GENERATE")
+            events_path = os.path.join(frames_path, "events.json")
 
-        if not os.path.exists(frames_path) or not os.path.exists(events_path):
-            print(f"❌ Error: Frames or events not found at {frames_path}")
-            continue
+            # 2. Compile Video
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            temp_video_name = f"temp_{timestamp}.mp4"
+            temp_video_path = os.path.join(BATCH_OUTPUT_DIR, temp_video_name)
+            
+            if not compile_video(frames_path, temp_video_path): continue
 
-        # 2. Compile Video (Silent)
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        temp_video_name = f"temp_{timestamp}.mp4"
-        temp_video_path = os.path.join(BATCH_OUTPUT_DIR, temp_video_name)
-        
-        ffmpeg_cmd = [
-            "ffmpeg", "-y",
-            "-framerate", "60",
-            "-i", os.path.join(frames_path, "frame_%05d.png"),
-            "-vf", "scale=1080:1920",
-            "-c:v", "libx264",
-            "-crf", "18",
-            "-preset", "slow",
-            "-pix_fmt", "yuv420p",
-            temp_video_path
-        ]
+            # 3. Mix Audio
+            if not mix_audio(events_path, temp_video_path, theme):
+                print("⚠️ Audio mixing issue.")
 
-        if not run_step("Compile Video", ffmpeg_cmd):
-            continue
+            # 4. Finalize
+            final_filename = f"sim_{timestamp}_{theme}_{names['player'].replace(' ', '')}_vs_{names['enemy'].replace(' ', '')}.mp4"
+            final_path = os.path.join(BATCH_OUTPUT_DIR, final_filename)
+            os.rename(temp_video_path, final_path)
 
-        # 3. Mix Audio
-        if not run_step("Mix Audio", ["uv", "run", MIX_SCRIPT, events_path, temp_video_path, "60"]): # Using 'uv run' for python environment safety
-             print("⚠️ Audio mixing failed, but video exists. Continuing...")
+            # 5. Generate SEO Metadata
+            metadata = {
+                "title": f"{names['player']} vs {names['enemy']} - {theme} World Conquest",
+                "description": f"Epic procedural battle in the {theme} biome. {names['player']} faces off against {names['enemy']} in a holographic war simulation.",
+                "tags": [theme, "Simulation", "AIBattle", "Procedural", names['player'], names['enemy'], "NeonJuice"],
+                "stats": {
+                    "frames": result.get('frames'),
+                    "theme": theme,
+                    "duration_sec": result.get('frames') / config.FPS
+                }
+            }
+            meta_path = final_path.replace(".mp4", ".json")
+            with open(meta_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
 
-        # 4. Finalize
-        final_filename = f"sim_{timestamp}_{frame_dir_name}.mp4"
-        final_path = os.path.join(BATCH_OUTPUT_DIR, final_filename)
-        os.rename(temp_video_path, final_path)
-        
-        print(f"✅ Finished: {final_path}")
+            # 6. Copy Thumbnail to output folder
+            thumb_source = os.path.join(frames_path, "thumbnail.jpg")
+            if os.path.exists(thumb_source):
+                shutil.copy(thumb_source, final_path.replace(".mp4", ".jpg"))
+            
+            print(f"✨ Finished: {final_filename}")
 
-        # 5. Cleanup Frames
-        print("🧹 Cleaning up frames...")
-        shutil.rmtree(frames_path)
-
-        # Update History
-        history[current_map] = history.get(current_map, 0) + 1
-        save_history(history)
-        last_map = current_map
-
-        print("⏳ Cooldown 5s...")
-        time.sleep(5)
+            # Note: Frames are cleaned by Node server on next run or overwrite.
+            
+    except KeyboardInterrupt:
+        print("\n🛑 Stopping...")
+    finally:
+        server.stop()
 
 if __name__ == "__main__":
     main()

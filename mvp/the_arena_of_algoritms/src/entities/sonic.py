@@ -1,17 +1,21 @@
 import pygame
 import math
 import random
+from .base import Entity
+from ..config import WHITE
 from ..audio import generate_note_sound
 from ..effects import spawn_particles
 
-class SonicWave:
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+class SonicWave(Entity):
+    NAME = "SONIC WAVE"
+    COLOR = (200, 200, 200)
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.sources = []
         self.timer = 0.0
         self.interval = 0.5
-        self.color = (200, 200, 200)
+        self.color = self.COLOR
         self.wave_speed = 500.0 # Faster travel
 
     def update(self, dt):

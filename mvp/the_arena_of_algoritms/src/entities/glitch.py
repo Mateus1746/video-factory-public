@@ -1,21 +1,25 @@
 import pygame
 import math
 import random
+from .base import Entity
+from ..config import WHITE
 from ..audio import generate_note_sound
 from ..effects import spawn_particles
 
-class BinaryGlitch:
+class BinaryGlitch(Entity):
     """
     Binary Glitch uses bitwise logic (XOR patterns) to determine 
     the location and intensity of its attacks.
     """
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+    NAME = "BINARY GLITCH"
+    COLOR = (0, 255, 0)
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.glitches = [] # (rect, timer, bits)
         self.timer = 0.0
         self.interval = 0.08
-        self.color = (0, 255, 0) # Matrix Green
+        self.color = self.COLOR # Matrix Green
         self.step = 0
         
     def update(self, dt):

@@ -2,21 +2,23 @@ import { CONFIG } from './core/Config.js';
 import { Simulation } from './core/Simulation.js';
 import { Renderer } from './view/Renderer.js';
 import { AudioController } from './view/Audio.js';
+import { MapGenerator } from './core/MapGenerator.js';
+import { CommentarySystem } from './view/CommentarySystem.js';
 
 export class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas') || document.querySelector('canvas');
         
         this.simulation = new Simulation();
-        this.renderer = new Renderer(this.canvas);
+        this.renderer = new Renderer(this.canvas); 
         this.audio = new AudioController();
+        this.generator = new MapGenerator();
+        this.commentary = new CommentarySystem(this.renderer);
         
         this.isReady = false;
         
-        // Setup initial interaction for Audio Context
         this.setupAudioInput();
         
-        // Expose for external tools (Puppeteer)
         window.gameInstance = this;
         window.nextFrame = () => this.step();
         
@@ -39,23 +41,24 @@ export class Game {
     }
 
     async loadLevel() {
-        // 1. Check for global data (HTML maps)
         if (window.MAP_DATA) {
             this.simulation.loadMap(window.MAP_DATA);
             return;
         }
 
-        // 2. Check for URL parameter (JSON maps)
         const params = new URLSearchParams(window.location.search);
         const mapFile = params.get('map');
 
+        if (!mapFile || mapFile === 'GENERATE') {
+            console.log("🎲 Generating Procedural Map...");
+            const data = this.generator.generate();
+            this.simulation.loadMap(data);
+            window.MAP_DATA = data;
+            return;
+        }
+
         if (mapFile) {
             try {
-                // Adjust path: assume maps are in maps/ or relative root?
-                // The server serves root. 'maps/level1.json'
-                // If mapFile is just 'level1.json', we might need 'maps/level1.json'
-                // But usually the param would be full path or we try both.
-                // Let's assume the param includes the folder or we prepend 'maps/' if missing.
                 let fetchPath = mapFile;
                 if (!mapFile.includes('/')) fetchPath = `maps/${mapFile}`;
 
@@ -63,23 +66,20 @@ export class Game {
                 if (!res.ok) throw new Error(`Failed to load ${fetchPath}`);
                 const data = await res.json();
                 this.simulation.loadMap(data);
-                window.MAP_DATA = data; // Cache it
+                window.MAP_DATA = data; 
             } catch (e) {
                 console.error("Map load error:", e);
             }
-        } else {
-            console.warn("No MAP_DATA and no 'map' param.");
         }
     }
 
-    // Single step of logic + render
     step() {
         this.simulation.update();
+        this.commentary.update(this.simulation);
         
-        // Process events
         this.simulation.events.forEach(e => {
             this.renderer.handleEvent(e);
-            this.audio.playEvent(e.type, e); // Audio maps types differently if needed
+            this.audio.playEvent(e.type, e); 
         });
 
         this.renderer.draw(this.simulation);

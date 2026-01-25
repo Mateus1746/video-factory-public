@@ -6,18 +6,25 @@ from collections import deque
 from .config import WIDTH, HEIGHT, COLORS, BALANCE, DEBUG
 
 class Entity:
+    _shadow_cache = {} # Class-level cache for shadows by radius
+
     def __init__(self, x: float, y: float):
         self.x = x
         self.y = y
         self.scale = 1.0 # Para animações de "Pop"
 
     def draw_shadow(self, surface: pygame.Surface, offset: Tuple[float, float], radius: float):
-        """Desenha uma sombra projetada abaixo da entidade."""
+        """Desenha uma sombra projetada abaixo da entidade usando cache."""
         ox, oy = offset
-        # Sombra é uma elipse achatada preta com transparência
-        shadow_surf = pygame.Surface((radius * 2.2, radius * 0.8), pygame.SRCALPHA)
-        pygame.draw.ellipse(shadow_surf, (0, 0, 0, 80), shadow_surf.get_rect())
-        surface.blit(shadow_surf, (self.x - radius * 1.1 + ox, self.y + radius * 0.5 + oy))
+        radius_key = int(radius)
+        
+        if radius_key not in Entity._shadow_cache:
+            # Sombra é uma elipse achatada preta com transparência
+            shadow_surf = pygame.Surface((radius * 2.2, radius * 0.8), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 80), shadow_surf.get_rect())
+            Entity._shadow_cache[radius_key] = shadow_surf
+            
+        surface.blit(Entity._shadow_cache[radius_key], (self.x - radius * 1.1 + ox, self.y + radius * 0.5 + oy))
 
 class Projectile(Entity):
     def __init__(self, x: float, y: float, angle: float, damage: float, color: Tuple[int, int, int], p_type: str):
@@ -200,7 +207,23 @@ class Tower(Entity):
             if self.type == "ice": p_color = (100, 255, 255) # Azul claro
             elif self.type == "fire": p_color = (255, 100, 50) # Laranja
             elif self.level > 1: p_color = COLORS["MAGENTA"]
-
+            
+            # Muzzle Flash Effect (Partícula rápida)
+            muzzle_x = self.x + math.cos(self.angle) * 35
+            muzzle_y = self.y + math.sin(self.angle) * 35
+            # Import circular dependency workaround? No, Particle is in Game.particles list.
+            # Tower doesn't have reference to game... passed in update? 
+            # update signature: (enemies, projectiles, assets) -> No game particles list.
+            # I need to change signature or hack it.
+            # Ideally Tower shouldn't spawn particles directly, but return them or use a callback.
+            # For MVP speed: I will assume 'projectiles' list can be used or I'll pass 'game' context instead of split lists.
+            # But changing signature breaks compatibility.
+            # Let's check where update is called: game.py line ~130: t.update(self.enemies, self.projectiles, self.assets)
+            # I can't easily access particles list.
+            
+            # Alternative: Visual recoil (scale bump)
+            self.scale = 1.3 # Big bump on shoot
+            
             proj = Projectile(
                 self.x + math.cos(self.angle)*20,
                 self.y + math.sin(self.angle)*20,

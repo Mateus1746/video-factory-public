@@ -1,7 +1,8 @@
 import pygame
 import math
 import random
-from ..config import BALL_SPEED, GRAVITY, FRICTION, BALL_RADIUS, RING_THICKNESS, WALL_BOUNCE, BALL_DAMAGE, BALL_SPAWN_COOLDOWN, WHITE, MAX_BALLS
+from .base import Entity
+from ..config import BALL_SPEED, GRAVITY, FRICTION, BALL_RADIUS, RING_THICKNESS, WALL_BOUNCE, BALL_DAMAGE, BALL_SPAWN_COOLDOWN, WHITE, MAX_BALLS, PINK
 from ..audio import generate_note_sound
 from ..effects import TrailEffect, spawn_particles
 
@@ -97,15 +98,17 @@ class Ball:
         self.trail.draw(surface, self.color, radius=BALL_RADIUS*0.8)
         pygame.draw.circle(surface, self.color, pos, BALL_RADIUS)
 
-class Spawner:
+class Spawner(Entity):
     """
     Swarm Spawner implements Population Growth.
     The population grows exponentially upon collision with environment boundaries,
     simulating a self-replicating algorithm.
     """
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+    NAME = "SWARM SPAWNER"
+    COLOR = PINK
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.balls = [Ball(self.center)]
         self.generation = 0
         

@@ -1,20 +1,21 @@
 import pygame
 import math
 import random
-from ..config import WHITE
-from ..audio import generate_note_sound
-from ..effects import spawn_particles
+from .base import Entity
+from ..config import WHITE, SNAKE_SPEED, SNAKE_DAMAGE, SNAKE_COLOR
 
-class SnakeEater:
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+class SnakeEater(Entity):
+    NAME = "SNAKE EATER"
+    COLOR = SNAKE_COLOR
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.segments = []
         self.num_segments = 25
         self.head_pos = [center[0], center[1]]
         self.angle = 0.0
-        self.speed = 600 # Balanced speed
-        self.color = (50, 255, 100) # Lime Green
+        self.speed = SNAKE_SPEED
+        self.color = SNAKE_COLOR
         self.target_ring = None
         self.change_target_timer = 0.0
         
@@ -64,7 +65,7 @@ class SnakeEater:
             dist_from_center = math.hypot(self.head_pos[0] - self.center[0], self.head_pos[1] - self.center[1])
             # Increased hitbox from 30 to 50 to ensure contact even if drifting slightly
             if abs(dist_from_center - self.target_ring.radius) < 50: 
-                self.target_ring.take_damage(60000 * dt) # Buffed to 60k (was 27.5k)
+                self.target_ring.take_damage(SNAKE_DAMAGE * dt)
         else:
             # Idle circle - Only happens if NO target_ring selected
             # Sanity check: If we are here, but rings exist, something is wrong.

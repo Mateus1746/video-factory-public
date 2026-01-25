@@ -3,6 +3,7 @@ import math
 import struct
 import os
 import random
+import json
 
 AUDIO_RATE = 44100
 
@@ -22,34 +23,70 @@ def save_wav(filename, samples):
         f.setsampwidth(2) # 2 bytes (16 bit)
         f.setframerate(AUDIO_RATE)
         f.writeframes(data)
-    print(f"Generated {filename}")
+    # print(f"Generated {filename}")
 
-def generate_tone(freq, duration, volume=0.5, wave_type='sine', decay=True):
-    n_frames = int(AUDIO_RATE * duration)
-    samples = []
-    for i in range(n_frames):
-        t = float(i) / AUDIO_RATE
+def load_wav(filename):
+    """Load WAV file and return list of float samples."""
+    with wave.open(filename, 'r') as f:
+        n_frames = f.getnframes()
+        data = f.readframes(n_frames)
+        # Unpack int16
+        raw_samples = struct.unpack(f'<{n_frames}h', data)
+        # Convert to float
+        return [s / 32767.0 for s in raw_samples]
+
+def generate_sync_audio(events_json, output_file, total_duration):
+    """Generate a synchronized audio track based on simulation events."""
+    with open(events_json, 'r') as f:
+        events = json.load(f)
+    
+    # Pre-generate or ensure assets exist
+    generate_assets()
+    
+    # Map event types to WAV files
+    sound_map = {
+        "bounce_gain": "assets/bounce_gain.wav",
+        "bounce_loss": "assets/bounce_loss.wav",
+        "levelup": "assets/levelup.wav",
+        "win": "assets/win.wav",
+        "item_collect": "assets/collect.wav",
+        "chaos_trigger": "assets/alert.wav",
+        "pvp_collision": "assets/bounce_loss.wav" # Fallback
+    }
+    
+    # Load all sounds into memory for performance
+    loaded_sounds = {}
+    for ev_type, path in sound_map.items():
+        if os.path.exists(path):
+            loaded_sounds[ev_type] = load_wav(path)
+    
+    # Final buffer
+    total_samples = int(AUDIO_RATE * (total_duration + 2.0)) # Add buffer
+    final_buffer = [0.0] * total_samples
+    
+    # Mix sounds at event times
+    for ev in events:
+        ev_type = ev["type"]
+        ev_time = ev["time"]
         
-        # Frequency Modulation (optional slide)
-        current_freq = freq
+        if ev_type in loaded_sounds:
+            sound_data = loaded_sounds[ev_type]
+            start_idx = int(ev_time * AUDIO_RATE)
+            
+            # Mix in
+            for i in range(len(sound_data)):
+                idx = start_idx + i
+                if idx < total_samples:
+                    # Simple additive mixing
+                    final_buffer[idx] += sound_data[i]
+    
+    # Normalize if needed to avoid clipping
+    max_val = max(abs(s) for s in final_buffer) if final_buffer else 0
+    if max_val > 1.0:
+        final_buffer = [s / max_val for s in final_buffer]
         
-        if wave_type == 'sine':
-            val = math.sin(2 * math.pi * current_freq * t)
-        elif wave_type == 'square':
-            val = 1.0 if math.sin(2 * math.pi * current_freq * t) > 0 else -1.0
-        elif wave_type == 'saw':
-            val = 2.0 * (t * current_freq - math.floor(0.5 + t * current_freq))
-        elif wave_type == 'noise':
-            val = random.uniform(-1, 1)
-            
-        # Envelope (Volume Decay)
-        env = volume
-        if decay:
-            # Linear decay
-            env = volume * (1.0 - (i / n_frames))
-            
-        samples.append(val * env)
-    return samples
+    save_wav(output_file, final_buffer)
+    print(f"🎵 Sync audio generated: {output_file} ({len(events)} events)")
 
 def generate_assets():
     if not os.path.exists("assets"):

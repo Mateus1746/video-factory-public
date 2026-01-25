@@ -1,14 +1,18 @@
 import pygame
 import sys
+import time
+import traceback
+from typing import Optional
 from .config import *
 from .recorder import VideoRecorder
 from .systems.battle import BattleManager
 from .systems.renderer import RenderSystem
+from .audio import SoundManager, RECORDING_MANAGER
+from .utils import DIAGNOSTICS, logger
 
 class SimulationEngine:
-    def __init__(self, output_filename=None):
+    def __init__(self, output_filename: Optional[str] = None):
         pygame.init()
-        from .utils import DIAGNOSTICS, logger
         self.telemetry = DIAGNOSTICS
         self.logger = logger
         self.logger.info("SimulationEngine initializing...")
@@ -17,7 +21,6 @@ class SimulationEngine:
         pygame.display.set_caption("Algorithm Battle: Random Duel")
         self.clock = pygame.time.Clock()
         
-        from .audio import SoundManager
         self.sound_manager = SoundManager()
         
         if EXPORT_MODE:
@@ -33,8 +36,7 @@ class SimulationEngine:
         
         self.running = True
 
-    def run(self):
-        import time
+    def run(self) -> None:
         try:
             while self.running:
                 t_start = time.perf_counter()
@@ -59,7 +61,7 @@ class SimulationEngine:
                 t_drw_end = time.perf_counter()
                 
                 # Logic to close
-                if self.battle_manager.game_over and self.battle_manager.victory_timer >= 2.0:
+                if self.battle_manager.game_over and self.battle_manager.victory_timer >= 5.0:
                     self.save_and_exit()
 
                 t_end = time.perf_counter()
@@ -70,20 +72,18 @@ class SimulationEngine:
                 )
         except Exception as e:
             self.telemetry.log_error(f"FATAL ERROR in main loop: {e}", fatal=True)
-            import traceback
             traceback.print_exc()
             self.save_and_exit()
 
-    def handle_events(self):
+    def handle_events(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.save_and_exit()
 
-    def save_and_exit(self):
+    def save_and_exit(self) -> None:
         self.logger.info("Exiting simulation...")
         if EXPORT_MODE:
             print("Saving audio before exit...")
-            from .audio import RECORDING_MANAGER
             RECORDING_MANAGER.save("simulation_audio.wav")
             
         if self.recorder:

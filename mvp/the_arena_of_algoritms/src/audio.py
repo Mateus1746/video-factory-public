@@ -54,8 +54,11 @@ class AudioRecorder:
             return
         
         print(f"Mixing {len(self.events)} audio events...")
-        max_time = max(start + len(s)/self.sample_rate for s, start in self.events)
-        total_len = int(max_time * self.sample_rate) + 44100 # Add 1s buffer
+        # Duration is MAX(last_event_end, current_simulation_time)
+        last_event_end = max(start + len(s)/self.sample_rate for s, start in self.events)
+        final_duration = max(last_event_end, self.current_time)
+        
+        total_len = int(final_duration * self.sample_rate) + 1000 # Add small buffer
         
         mixed = np.zeros(total_len, dtype=np.float32)
         for samples, start_time in self.events:

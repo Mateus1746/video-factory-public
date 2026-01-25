@@ -6,16 +6,16 @@ from src.entities.enemy import Enemy
 class GameManager:
     def __init__(self):
         self.xp = 0
-        self.max_xp = 100
+        self.max_xp = config.XP_MAX_INITIAL
         self.level = 1
         self.kills = 0
         self.time_elapsed = 0.0
         
         self.spawn_timer = 0.0
-        self.spawn_interval = 0.8 
+        self.spawn_interval = config.SPAWN_INTERVAL_INITIAL 
         self.upgrade_pending = False
         self.boss_spawned = False
-        self.horde_events = [12.0, 25.0, 38.0] # More frequent chaos
+        self.horde_events = config.EVENT_HORDE_TIMES
         self.victory = False
         self.ambient_xp_timer = 0.0
 
@@ -27,13 +27,11 @@ class GameManager:
     def level_up(self):
         self.xp -= self.max_xp
         self.level += 1
-        # Player scales slower than before
-        self.max_xp = int(self.max_xp * 1.4) 
-        self.spawn_interval = max(0.08, self.spawn_interval * 0.88)
+        self.max_xp = int(self.max_xp * config.XP_SCALE_FACTOR) 
+        self.spawn_interval = max(config.SPAWN_INTERVAL_MIN, self.spawn_interval * 0.88)
         self.upgrade_pending = True
 
     def apply_upgrade(self, upgrade_type: str, player, weapon):
-        # Balanced Upgrades (Nerfed slightly to prevent god-mode)
         if upgrade_type == "speed": 
             player.speed += 25.0
         elif upgrade_type == "damage": 
@@ -57,8 +55,8 @@ class GameManager:
         self.time_elapsed += dt
         if self.upgrade_pending or self.victory: return
 
-        # DIFFICULTY MULTIPLIER: 1.0 at start, ~2.0 at 45 seconds
-        diff_mult = 1.0 + (self.time_elapsed / 40.0)
+        # DIFFICULTY MULTIPLIER
+        diff_mult = 1.0 + (self.time_elapsed / config.DIFFICULTY_RAMP_SEC)
 
         # AMBIENT XP SPAWN
         if xp_orbs is not None:
@@ -66,7 +64,7 @@ class GameManager:
             if self.ambient_xp_timer > 2.5:
                 self.ambient_xp_timer = 0
                 from src.entities.orb import XPOrb
-                for _ in range(2): # Fewer ambient XP to make kills more important
+                for _ in range(2): 
                     rx = random.uniform(200, config.WORLD_W - 200)
                     ry = random.uniform(200, config.WORLD_H - 200)
                     xp_orbs.append(XPOrb(rx, ry))
@@ -81,10 +79,9 @@ class GameManager:
                     ey = config.WORLD_H/2 + math.sin(angle) * dist
                     enemies.append(Enemy(ex, ey, "swarm", diff_mult))
 
-        # BOSS SPAWN (At 45s)
-        if self.time_elapsed > 45.0 and not self.boss_spawned:
+        # BOSS SPAWN
+        if self.time_elapsed > config.EVENT_BOSS_TIME and not self.boss_spawned:
             self.boss_spawned = True
-            # Boss uses the multiplier too!
             enemies.append(Enemy(config.WORLD_W/2, config.WORLD_H/2 - 800, "boss", diff_mult))
             return
 

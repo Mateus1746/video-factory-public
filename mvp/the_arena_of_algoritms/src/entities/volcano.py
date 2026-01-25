@@ -1,22 +1,26 @@
 import pygame
 import math
 import random
+from .base import Entity
+from ..config import WHITE
 from ..audio import generate_note_sound
 from ..effects import spawn_particles
 
-class VolcanoEruption:
+class VolcanoEruption(Entity):
     """
     Volcano Eruption simulates Ejecta Dynamics.
     Particles follow parabolic trajectories with initial velocities 
     sampled from a specific distribution.
     """
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+    NAME = "VOLCANO ERUPTION"
+    COLOR = (255, 120, 0)
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.rocks = []
         self.timer = 0.0
         self.interval = 0.04
-        self.color = (255, 120, 0) # Magma
+        self.color = self.COLOR # Magma
         self.gravity = 500.0
         
     def update(self, dt):

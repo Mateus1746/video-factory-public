@@ -27,6 +27,7 @@ class AudioEvent:
     t: float
     name: str
     vol: float
+    x: float = 0.5 # Normalized x position (0.0 to 1.0)
 
 
 @dataclass

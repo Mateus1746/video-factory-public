@@ -17,14 +17,9 @@ def render_audio():
         print("Error: audio_events.json not found. Run simulation first.")
         return
 
-    # 2. Asset Mapping (Normalized 48kHz)
-    sound_files = {
-        "collision": "assets/music/collision_48.wav",
-        "powerup": "assets/music/powerup_48.wav",
-        "elimination": "assets/music/elimination_48.wav",
-        "tictoc": "assets/music/tictoc_48.wav"
-    }
-    bg_file = "assets/music/bg_48.wav"
+    # 2. Asset Mapping (from config)
+    sound_files = config.AUDIO_PATHS.copy()
+    bg_file = sound_files.pop("bg", "assets/music/bg_48.wav")
 
     # 3. Load BG and Initialize Final Track
     try:

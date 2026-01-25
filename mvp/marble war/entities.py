@@ -6,6 +6,7 @@ Includes Marble and Projectile classes.
 import math
 import random
 
+import pygame
 import pymunk
 
 import config
@@ -51,12 +52,11 @@ class Projectile:
         self.life -= config.TIMESTEP
         return self.life > 0
 
-    def draw(self, screen, image=None) -> None:
-        """Draw projectile as simple black ball."""
-        import pygame
+    def draw(self, screen: pygame.Surface, image: pygame.Surface = None) -> None:
+        """Draw projectile as bright yellow pellet."""
         pos = (int(self.body.position.x), int(self.body.position.y))
-        pygame.draw.circle(screen, (0, 0, 0), pos, self.radius)
-        pygame.draw.circle(screen, (50, 50, 50), pos, self.radius, 1)
+        pygame.draw.circle(screen, (255, 255, 0), pos, self.radius) # Bright Yellow
+        pygame.draw.circle(screen, (255, 255, 255), pos, self.radius, 1) # White rim
 
 
 # ============================================================================
@@ -88,11 +88,18 @@ class Marble:
         self.speed_boost: float = 1.0
         self.brush_multiplier: int = 1
         self.assassin_mode: bool = False
+        self.magnet_active: bool = False
+        self.freeze_active: bool = False
         self.powerup_timer: float = 0.0
         self.shoot_timer: float = 0.0
         self.ammo: int = 0
         self.face_timer: float = 0.0
         self.current_face: str = "bravo"
+        self.freeze_immunity_timer: float = 0.0 # New immunity state
+        
+        # RPG Stats (Nexus V2)
+        self.hp: int = 1
+        self.max_hp: int = 1
         
         space.add(self.body, self.shape)
 
@@ -101,20 +108,46 @@ class Marble:
         Apply random force for chaotic movement.
         Returns True if marble should shoot.
         """
-        # Random force
-        strength = 2500 * self.speed_boost
-        angle = random.uniform(0, math.tau)
-        force = (math.cos(angle) * strength, math.sin(angle) * strength)
-        self.body.apply_force_at_local_point(force)
-        
-        # Update timers
+        # 1. Update Power-up Timer (Essential for Freeze/Magnet)
         if self.powerup_timer > 0:
             self.powerup_timer -= config.TIMESTEP
             if self.powerup_timer <= 0:
                 self._reset_powerups()
+
+        if self.freeze_active:
+            # Frozen marbles cannot move or shoot
+            self.body.velocity = (0, 0)
+            self.body.angular_velocity = 0
+            return False
+
+        # 2. AI BEHAVIOR: EVASION (For Zombie Mode)
+        # This will be influenced by GameState (passing nearest enemy info)
+        # For now, base strength:
+        base_strength = 2500 * self.speed_boost
         
+        # Scale force for heavy units (Juggernaut)
+        mass_factor = 1.0
+        if self.body.mass > 5:
+            mass_factor = self.body.mass * 0.5
+            
+        strength = base_strength * mass_factor
+        
+        # 3. Apply Force (Random jitter + potential evasion logic)
+        angle = random.uniform(0, math.tau)
+        force = (math.cos(angle) * strength, math.sin(angle) * strength)
+        self.body.apply_force_at_local_point(force)
+        
+        # SPEED LIMIT (Safety Clamp)
+        MAX_SPEED = 1500
+        if self.body.velocity.length > MAX_SPEED:
+            self.body.velocity = self.body.velocity.scale_to_length(MAX_SPEED)
+        
+        # Update other timers
         if self.face_timer > 0:
             self.face_timer -= config.TIMESTEP
+        
+        if self.freeze_immunity_timer > 0:
+            self.freeze_immunity_timer -= config.TIMESTEP
         
         # Shooting logic
         should_shoot = False
@@ -129,7 +162,22 @@ class Marble:
     
     def _reset_powerups(self) -> None:
         """Reset all power-up effects."""
+        # If we were frozen, give immunity now
+        if self.freeze_active:
+            self.freeze_immunity_timer = 5.0
+
         self.speed_boost = 1.0
         self.brush_multiplier = 1
         self.assassin_mode = False
+        self.magnet_active = False
+        self.freeze_active = False
         self.ammo = 0
+
+    def infect(self) -> None:
+        """Transform into a zombie."""
+        self.team = "zombie"
+        self.color = (50, 255, 50) # Bright Green
+        self.current_face = "morto" # Zumbis têm cara de morto
+        self.face_timer = 2.0
+        # Zombies are extremely slow (10% speed)
+        self.speed_boost = 0.10

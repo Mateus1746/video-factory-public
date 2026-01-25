@@ -1,22 +1,26 @@
 import pygame
 import math
 import random
+from .base import Entity
+from ..config import WHITE
 from ..effects import spawn_particles
 from ..audio import generate_note_sound
 
-class NaniteCloud:
+class NaniteCloud(Entity):
     """
     Nanite Cloud implements the Boids Algorithm for collective behavior:
     1. Separation: Avoid crowding neighbors
     2. Alignment: Steer towards average heading of neighbors
     3. Cohesion: Steer towards average position of neighbors
     """
-    def __init__(self, center, rings):
-        self.center = center
-        self.rings = rings
+    NAME = "NANITE CLOUD"
+    COLOR = (180, 180, 180)
+
+    def __init__(self, center, rings, projectile_manager=None):
+        super().__init__(center, rings, projectile_manager)
         self.particles = []
         self.num_particles = 100
-        self.color = (180, 180, 180) # Silver
+        self.color = self.COLOR # Silver
         
         for _ in range(self.num_particles):
             self.particles.append({

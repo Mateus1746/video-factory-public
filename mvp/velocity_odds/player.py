@@ -1,4 +1,3 @@
-import pygame
 import math
 import random
 from config import *
@@ -9,25 +8,9 @@ class Player:
         self.color = config_dict["color"]
         self.start_offset = config_dict["start_pos"]
         
-        # Load Sprites
-        self.sprites = {}
-        if "sprites" in config_dict:
-            for key, path in config_dict["sprites"].items():
-                try:
-                    img = pygame.image.load(path)
-                    # Scale to ball size * 2
-                    self.sprites[key] = pygame.transform.scale(img, (BALL_RADIUS*2, BALL_RADIUS*2))
-                except Exception as e:
-                    print(f"Error loading {key} sprite for {self.name}: {e}")
-                    self.sprites[key] = None
-        elif "image" in config_dict:
-             # Legacy support
-            try:
-                img = pygame.image.load(config_dict["image"])
-                self.sprites["default"] = pygame.transform.scale(img, (BALL_RADIUS*2, BALL_RADIUS*2))
-            except:
-                pass
-
+        # Identity for Renderer
+        self.team_id = "TEAM_A" if config_dict == TEAM_A else "TEAM_B"
+        
         self.reset()
 
     def reset(self):
@@ -51,9 +34,8 @@ class Player:
 
     def set_emotion(self, emotion, duration=1.0):
         """Set a temporary emotion for the player."""
-        if emotion in self.sprites and self.sprites[emotion]:
-            self.emotion = emotion
-            self.emotion_timer = duration
+        self.emotion = emotion
+        self.emotion_timer = duration
 
     def update_physics(self, dt, active_gravity, chaos_mode, ring_angles, ring_speeds):
         if self.finished: return
@@ -71,13 +53,13 @@ class Player:
         if chaos_mode == 'TURBO':
             sim_dt = dt * 2.0
         elif chaos_mode == 'MOON':
-            gravity_effect = GRAVITY * 0.2
+            gravity_effect = GRAVITY * MOON_GRAVITY_MULT
         elif chaos_mode == 'INVERT':
-            gravity_effect = -GRAVITY
+            gravity_effect = GRAVITY * INVERT_GRAVITY_MULT
 
         # Integration
         time_scale = 1.0
-        if chaos_mode == 'TURBO': time_scale = 1.8
+        if chaos_mode == 'TURBO': time_scale = TURBO_TIMESCALE
         
         self.vel_y += gravity_effect * time_scale
         
@@ -87,7 +69,7 @@ class Player:
         
         # Speed Cap
         speed_limit = MAX_SPEED
-        if chaos_mode == 'TURBO': speed_limit = MAX_SPEED * 2
+        if chaos_mode == 'TURBO': speed_limit = MAX_SPEED * TURBO_SPEED_LIMIT_MULT
         
         curr_speed = math.hypot(self.vel_x, self.vel_y)
         if curr_speed > speed_limit:
@@ -97,24 +79,3 @@ class Player:
 
         self.pos_x += self.vel_x * time_scale
         self.pos_y += self.vel_y * time_scale
-
-    def draw(self, surface, center_x, center_y):
-        # Calculate draw position
-        dx = int(center_x + self.pos_x)
-        dy = int(center_y + self.pos_y)
-        
-        # Select Sprite
-        sprite = self.sprites.get(self.emotion)
-        if not sprite:
-            sprite = self.sprites.get("default")
-            
-        if sprite:
-            # Draw Image centered
-            rect = sprite.get_rect(center=(dx, dy))
-            surface.blit(sprite, rect)
-        else:
-            # Fallback: Draw Circle
-            pygame.draw.circle(surface, self.color, (dx, dy), BALL_RADIUS)
-        
-        # Add a subtle border to distinguish teams if colors are similar
-        pygame.draw.circle(surface, WHITE, (dx, dy), BALL_RADIUS, 1)
