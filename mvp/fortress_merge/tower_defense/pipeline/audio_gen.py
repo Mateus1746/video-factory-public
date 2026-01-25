@@ -3,7 +3,15 @@ Audio Generation - High Quality Synth
 Replaces noise-based SFX with clean synthesized tones (Lasers, Bass Kicks).
 """
 import numpy as np
-from moviepy import AudioArrayClip, VideoFileClip
+try:
+    from moviepy.editor import AudioArrayClip, VideoFileClip
+except ImportError:
+    try:
+        from moviepy.audio.AudioClip import AudioArrayClip
+        from moviepy.video.io.VideoFileClip import VideoFileClip
+    except ImportError:
+        # Last resort for newer versions or mixed installs
+        from moviepy import AudioArrayClip, VideoFileClip
 
 class AudioEngine:
     def __init__(self, fps=44100):
