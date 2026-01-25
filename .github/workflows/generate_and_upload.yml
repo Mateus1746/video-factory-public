@@ -50,6 +50,9 @@ jobs:
         # Ensure all potential deps are present for any project
         pip install moviepy pillow scipy numpy pygame yt-dlp google-api-python-client google-auth-oauthlib google-auth-httplib2
 
+    - name: Debug Installed Packages
+      run: pip list
+
     - name: Install Node Deps (Conditional)
       if: ${{ matrix.project.needs_node }}
       run: |
