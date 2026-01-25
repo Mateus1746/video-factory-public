@@ -20,7 +20,6 @@ jobs:
           - { name: "Marble War", path: "mvp/marble war", tag: "marble_paint_war", needs_node: false }
           - { name: "Roguelike", path: "mvp/roguelike_survival_", tag: "neon_survivor_lab", needs_node: false }
           - { name: "Arena Algos", path: "mvp/the_arena_of_algoritms", tag: "the_arena_of_algoritms", needs_node: false }
-          - { name: "Tower Defense", path: "mvp/tower_defense", tag: "tower_defense", needs_node: false }
           - { name: "Velocity Odds", path: "mvp/velocity_odds", tag: "velocity_odds", needs_node: false }
 
     steps:
