@@ -164,16 +164,21 @@ def mix_audio_to_video(video_path, audio_events, output_path, total_duration):
         full_audio /= max_val
         full_audio *= 0.9
 
+    import moviepy
+    print(f"DEBUG: MoviePy version: {getattr(moviepy, '__version__', 'unknown')}")
+    
     audio_clip = AudioArrayClip(full_audio, fps=sr)
     video = VideoFileClip(video_path)
     
-    # moviepy 1.x uses set_duration and set_audio
-    try:
+    # Dual compatibility for MoviePy 1.x and 2.x
+    if hasattr(audio_clip, 'set_duration'):
         audio_clip = audio_clip.set_duration(video.duration)
-        final_video = video.set_audio(audio_clip)
-    except AttributeError:
-        # Fallback for moviepy 2.x
+    else:
         audio_clip = audio_clip.with_duration(video.duration)
+        
+    if hasattr(video, 'set_audio'):
+        final_video = video.set_audio(audio_clip)
+    else:
         final_video = video.with_audio(audio_clip)
     
     final_video.write_videofile(output_path, codec="libx264", audio_codec="aac")
