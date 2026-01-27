@@ -11,7 +11,7 @@ def main():
     print(f"🚀 Launching Fortress Merge Unified Runner with count={count}")
     
     # Ensure output directory exists (run_unified handles it, but good practice)
-    output_dir = "ready_to_upload" # Changed to match project structure
+    output_dir = "batch_output" # Changed to match project structure
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         
